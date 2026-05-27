@@ -1,0 +1,6 @@
+{
+    "/api/smart-x/schema/reports": "/schema",
+    "/api/smart-x/ui/reports": "/ui",
+    "/api/smart-x/data/reports\\?*": "/data?",
+    "/api/smart-x/preferences/reports": "/preferences"
+}

@@ -1,0 +1,18 @@
+{
+    "compileOnSave": false,
+    "compilerOptions": {
+        "declaration": false,
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "module": "ES2022",
+        "moduleResolution": "bundler",
+        "rootDir": "./src",
+        "outDir": "./dist/out-tsc",
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "target": "ES2022",
+        "strict": false,
+        "useDefineForClassFields": false
+    }
+}

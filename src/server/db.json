@@ -1,0 +1,231 @@
+{
+    "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "reports",
+        "title": "Relatórios",
+        "type": "object",
+        "properties": {
+            "id": {
+                "title": "Id",
+                "type": "string",
+                "format": null
+            },
+            "displayName": {
+                "title": "Nome de Exibição",
+                "type": "string",
+                "format": null
+            },
+            "description": {
+                "title": "Descrição",
+                "type": "string",
+                "format": null
+            },
+            "owner": {
+                "title": "Proprietário",
+                "type": "string",
+                "format": null
+            },
+            "permission": {
+                "title": "Permissão",
+                "type": "string",
+                "format": null
+            },
+            "createdAt": {
+                "title": "Criado em",
+                "type": "string",
+                "format": "date-time"
+            }
+        },
+        "finder": {
+            "properties": ["id"]
+        }
+    },
+    "ui": {
+        "version": "1.0",
+        "layout": "dataOperations",
+        "identifier": "reports",
+        "title": "Relatórios",
+        "model": "reports",
+        "views": [
+            {
+                "type": "dataView",
+                "identifier": "dataViewReports",
+                "title": "Listagem de relatórios",
+                "elements": [
+                    {
+                        "type": "table",
+                        "identifier": "tableResources",
+                        "title": null,
+                        "columns": [
+                            {
+                                "property": "displayName",
+                                "width": "300px"
+                            },
+                            {
+                                "property": "description",
+                                "width": "300px"
+                            },
+                            {
+                                "property": "owner",
+                                "width": "200px"
+                            },
+                            {
+                                "property": "createdAt",
+                                "width": "230px"
+                            }
+                        ],
+                        "actionPdf": false,
+                        "actionExcel": false,
+                        "filters": [
+                            {
+                                "property": "displayName",
+                                "basic": {
+                                    "operator": "contains"
+                                }
+                            },
+                            {
+                                "property": "description",
+                                "basic": {
+                                    "operator": "contains"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "configuration": {
+                    "singleSelect": true,
+                    "tableActions": [
+                        {
+                            "identifier": "actionPdf",
+                            "hidden": true
+                        },
+                        {
+                            "identifier": "actionExcel",
+                            "hidden": true
+                        },
+                        {
+                            "type": "callSystemAction",
+                            "identifier": "detailAction",
+                            "label": "Visualizar",
+                            "target": null,
+                            "tooltip": "Visualizar",
+                            "method": "navigate",
+                            "params": {
+                                "route": "/reports/create"
+                            }
+                        },
+                        {
+                            "type": "callSystemAction",
+                            "label": "Editar",
+                            "identifier": "editAction",
+                            "icon": "an an-pencil-simple",
+                            "method": "navigate",
+                            "params": {
+                                "route": "/reports/create"
+                            }
+                        },
+                        {
+                            "identifier": "deleteAction",
+                            "disabled": true,
+                            "endpoint": "/api/resources/report/{{$selectedRow.id}}",
+                            "actionError": {
+                                "type": "showMessage",
+                                "message": "Falha ao excluir o relatório {{$selectedRow.displayName}}",
+                                "identifier": "message-error",
+                                "messageType": "error",
+                                "label": ""
+                            }
+                        },
+                        {
+                            "label": "Marcar como favorito",
+                            "icon": "an an-star",
+                            "identifier": "showMessageAction",
+                            "type": "showMessage",
+                            "messageType": "success",
+                            "message": "Relatório {{$selectedRow.displayName}} marcado como favorito",
+                            "disabled": false
+                        },
+                        {
+                            "label": "Duplicar",
+                            "icon": "an an-files",
+                            "identifier": "showMessageAction",
+                            "type": "showMessage",
+                            "messageType": "success",
+                            "message": "Duplicando relatório {{$selectedRow.displayName}}..."
+                        },
+                        {
+                            "label": "Exportar",
+                            "icon": "an an-file-arrow-down",
+                            "identifier": "showMessageAction",
+                            "type": "showMessage",
+                            "messageType": "success",
+                            "message": "Exportando relatório {{$selectedRow.displayName}}..."
+                        },
+                        {
+                            "label": "Compartilhar",
+                            "icon": "an an-share-network",
+                            "identifier": "showMessageAction",
+                            "type": "showMessage",
+                            "messageType": "success",
+                            "message": "Compartilhando relatório {{$selectedRow.displayName}}..."
+                        }
+                    ],
+                    "pageActions": [
+                        {
+                            "type": "callSystemAction",
+                            "identifier": "newAction",
+                            "label": "Incluir",
+                            "url": null,
+                            "target": null,
+                            "icon": "an an-plus",
+                            "hidden": false,
+                            "method": "navigate",
+                            "params": {
+                                "route": "/reports/create"
+                            }
+                        },
+                        {
+                            "type": "navigate",
+                            "identifier": null,
+                            "label": "Exportar relatórios em lote",
+                            "url": "reports/create",
+                            "target": "_self",
+                            "hidden": false
+                        },
+                        {
+                            "type": "callSystemAction",
+                            "label": "Importar relatórios",
+                            "identifier": "navigate",
+                            "method": "navigate",
+                            "params": {
+                                "route": "/reports/create"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "data": {
+        "hasNext": false,
+        "items": [
+            {
+                "id": "d95bf061-b65f-4551-bfe9-3a6e78422e74",
+                "displayName": "Relatório 1",
+                "description": "",
+                "owner": "Henrique Santos De Aguiar",
+                "permission": "Owner",
+                "createdAt": "2026-05-13T12:54:13.112253"
+            },
+            {
+                "id": "7438db1d-ab1f-4075-8923-cf294396414e",
+                "displayName": "Relatório 2",
+                "description": "Relatório 2",
+                "owner": "Henrique Santos De Aguiar",
+                "permission": "Owner",
+                "createdAt": "2026-05-15T18:44:31.7289264"
+            }
+        ]
+    },
+    "preferences": {}
+}
