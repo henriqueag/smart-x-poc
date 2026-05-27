@@ -1,0 +1,32 @@
+.grid-summary {
+	margin-bottom: 12px;
+	color: var(--color-neutral-dark-80);
+	font-size: var(--font-size-default);
+	font-weight: var(--font-weight-bold);
+}
+
+.grid-events {
+	margin-top: 16px;
+	padding: 12px;
+	border: 1px solid var(--color-neutral-light-20);
+	border-radius: var(--border-radius-md);
+	background: var(--color-neutral-light-00);
+}
+
+.grid-events h3 {
+	margin: 0 0 8px;
+	font-size: var(--font-size-default);
+}
+
+.grid-events ul {
+	margin: 0;
+	padding-left: 16px;
+	max-height: 240px;
+	overflow: auto;
+}
+
+.grid-events li {
+	margin-bottom: 4px;
+	color: var(--color-neutral-dark-70);
+	font-size: var(--font-size-sm);
+}

@@ -1,0 +1,61 @@
+<po-page-default p-title="Listagem de relatórios" [p-actions]="pageActions">
+    <div class="grid-summary" aria-live="polite">{{ totalLabel() }}</div>
+
+    <thf-grid
+        [t-items]="gridItems()"
+        [t-columns]="columns"
+        [t-fields]="filterFields"
+        [t-pageable]="true"
+        [t-page-size]="currentPageSize()"
+        [t-options-paging]="optionsPaging"
+        [t-show-more-visible]="hasMoreItems()"
+        [t-selectable]="true"
+        [t-selectable-entire-line]="true"
+        [t-action-edit]="onGridEdit"
+        [t-action-delete]="true"
+        [t-custom-actions]="customActions"
+        [t-actions]="rowActions"
+        [t-actions-right]="true"
+        [t-groupable]="true"
+        [t-group]="groupColumns()"
+        [t-sortable]="true"
+        [t-striped]="true"
+        [t-actions-filter]="true"
+        [t-hide-table-search]="false"
+        (t-delete-items)="onGridDeleteItems($event)"
+        (t-after-duplicate)="onGridAfterDuplicate($event)"
+        (t-before-duplicate)="onGridBeforeDuplicate($event)"
+        (t-change-aggregates)="onGridChangeAggregates($event)"
+        (t-change-filter-by-column)="onGridChangeFilterByColumn($event)"
+        (t-change-fixed-columns)="onGridChangeFixedColumns($event)"
+        (t-change-options-column-manager)="onGridChangeOptionsColumnManager($event)"
+        (t-change-row-state-filter)="onGridChangeRowStateFilter($event)"
+        (t-change-visible-columns)="onGridChangeVisibleColumns($event)"
+        (t-changed-density)="onGridChangedDensity($event)"
+        (t-changed-items)="onGridChangedItems($event)"
+        (t-restore-column-manager)="onGridRestoreColumnManager($event)"
+        (t-custom-filter)="onGridCustomFilter($event)"
+        (t-delete-item)="onGridDeleteItem($event)"
+        (t-change-page-size)="onGridChangePageSize($event)"
+        (t-items-after-get)="onGridItemsAfterGet($event)"
+        (t-change-group)="onGridChangeGroup($event)"
+        (t-change-order-column)="onGridChangeOrderColumn($event)"
+        (t-rows-selected)="onGridRowsSelected($event)"
+        (t-selected)="onGridSelected($event)"
+        (t-all-selected)="onGridAllSelected($event)"
+        (t-show-more)="onGridShowMore($event)"
+        (t-change-sort-column)="onGridChangeSortColumn($event)"
+        (t-unselected)="onGridUnselected($event)"
+        (t-all-unselected)="onGridAllUnselected($event)"
+    ></thf-grid>
+
+    <section class="grid-events" aria-label="Historico de eventos da grid">
+        <h3>Eventos da grid</h3>
+
+        <ul>
+            @for (entry of gridEventHistory(); track entry) {
+                <li>{{ entry }}</li>
+            }
+        </ul>
+    </section>
+</po-page-default>
