@@ -32,11 +32,7 @@ export class ReportResourceService {
     ];
 
     private resourceTypes: ReportResourceType[] = ['report', 'pivot-table', 'data-grid'];
-
-    private businessAreas: ReportBusinessArea[] = ['Financeiro', 'Compras', 'Estoque'];
-
     private permissions: ReportPermission[] = ['Viewer', 'Editor', 'Owner'];
-
     private resources: ReportResource[] = this.createMockResources(120);
 
     listResources(query: ReportResourceListQuery = {}): Observable<ReportResourceListResult> {
@@ -87,7 +83,6 @@ export class ReportResourceService {
         return Array.from({ length: totalItems }, (_, index) => {
             const itemNumber = index + 1;
             const resourceType = this.resourceTypes[index % this.resourceTypes.length];
-            const businessArea = this.businessAreas[index % this.businessAreas.length];
             const owner = this.owners[index % this.owners.length];
             const permission = this.permissions[index % this.permissions.length];
             const createdAt = new Date(Date.UTC(2026, 4, (index % 28) + 1, 8, index % 60, 0)).toISOString();
@@ -96,10 +91,9 @@ export class ReportResourceService {
                 id: String(itemNumber),
                 resourceType,
                 displayName: this.buildDisplayName(itemNumber),
-                description: this.buildDescription(businessArea, itemNumber),
+                description: this.buildDescription(itemNumber),
                 createdAt,
                 isFavorite: itemNumber % 4 === 0,
-                businessArea,
                 owner: { ...owner },
                 currentUser: {
                     permission
@@ -114,10 +108,9 @@ export class ReportResourceService {
         return `Resource ${itemNumber} ${suffix}`;
     }
 
-    private buildDescription(businessArea: ReportBusinessArea, itemNumber: number): string {
+    private buildDescription(itemNumber: number): string {
         const scenario = faker.lorem.sentence({ min: 8, max: 14 });
-
-        return `${businessArea} - Resource ${itemNumber}. ${scenario}`;
+        return `Resource ${itemNumber}. ${scenario}`;
     }
 
     private toPositiveNumber(value: number | undefined, fallback: number): number {

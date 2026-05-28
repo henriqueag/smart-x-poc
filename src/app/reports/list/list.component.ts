@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { PoPageAction, PoPageModule } from '@po-ui/ng-components';
-import { ThfGridComponent } from '@totvs/thf-components';
+import { ThfGridColumn, ThfGridColumnSort, ThfGridComponent, ThfGridDeleteService, ThfTableAction } from '@totvs/thf-components';
 import { ReportResource, ReportResourceListFilters } from '../report-resource.model';
 import { ReportResourceService } from '../report-resource.service';
+import { of } from 'rxjs';
 
 interface ReportGridItem extends ReportResource {
     ownerDisplayName: string;
@@ -19,11 +20,12 @@ interface ReportGridItem extends ReportResource {
 })
 export class ListComponent {
     protected readonly service = inject(ReportResourceService);
+
     protected readonly gridItems = signal<ReportGridItem[]>([]);
-    protected readonly gridEventHistory = signal<string[]>([]);
+    protected readonly gridEventHistory = signal<any>({});
     protected readonly selectedRows = signal<ReportGridItem[]>([]);
     protected readonly currentPage = signal(1);
-    protected readonly currentPageSize = signal(20);
+    protected readonly currentPageSize = signal(5);
     protected readonly totalItems = signal(0);
     protected readonly groupColumns = signal<string[]>(['businessArea']);
 
@@ -48,31 +50,83 @@ export class ListComponent {
         }
     ];
 
-    protected readonly columns = [
-        { property: 'id', label: 'ID', key: true, width: 90 },
-        { property: 'displayName', label: 'Nome', filter: true },
-        { property: 'description', label: 'Descricao', filter: true },
-        { property: 'resourceType', label: 'Tipo', filter: true },
-        { property: 'businessArea', label: 'Area de negocio', filter: true },
-        { property: 'ownerDisplayName', label: 'Owner', filter: true },
-        { property: 'permission', label: 'Permissao', filter: true },
-        { property: 'isFavorite', label: 'Favorito', type: 'boolean', filter: true, width: 110 },
-        { property: 'createdAt', label: 'Criado em' }
+    protected readonly columns: ThfGridColumn[] = [
+        { property: 'id', key: true, visible: false },
+        {
+            property: 'displayName',
+            label: 'Nome',
+            filter: true,
+            sortable: true
+        },
+        {
+            property: 'description',
+            label: 'Descricao',
+            filter: true,
+            resizable: true,
+            sortable: false,
+            visible: false
+        },
+        {
+            property: 'resourceType',
+            label: 'Tipo',
+            filter: true,
+            type: 'label',
+            labels: [
+                { value: 'report', label: 'Relatório', color: 'color-07', icon: 'an an-newspaper' },
+                { value: 'pivot-table', label: 'Tabela dinâmica', color: 'color-08', icon: 'an-fill an-crown' },
+                { value: 'data-grid', label: 'Visão de dados', color: 'color-09', icon: 'an-fill an-grid-four' }
+            ],
+            sortable: true,
+            width: 200
+        },
+        {
+            property: 'createdAt',
+            label: 'Criado em',
+            type: 'date',
+            format: 'dd/MM/yyyy HH:mm',
+            sortable: true,
+            filter: true,
+            width: 200
+        },
+        {
+            property: 'ownerDisplayName',
+            label: 'Proprietário',
+            filter: true,
+            sortable: true,
+            width: 250
+        },
+        {
+            property: 'permission',
+            label: 'Permissao',
+            type: 'label',
+            filter: true,
+            sortable: true,
+            labels: [
+                { value: 'Viewer', label: 'Visualizador' },
+                { value: 'Editor', label: 'Editor' },
+                { value: 'Owner', label: 'Proprietário' },
+            ],
+            width: 180
+        }
     ];
+    protected readonly sortColumns: ThfGridColumnSort[] = [
+        { field: 'createdAt', dir: 'desc' }
+    ]
 
     protected readonly optionsPaging = [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 50 }];
 
     protected readonly filterFields = [
         { property: 'displayName', label: 'Nome do recurso' },
         { property: 'description', label: 'Descricao' },
-        { property: 'isFavorite', label: 'Favorito', type: 'boolean' }
+        { property: 'isFavorite', label: 'Favorito' }
     ];
 
-    protected readonly rowActions = [
+    protected readonly rowActions: ThfTableAction[] = [
         {
             label: 'Visualizar',
-            icon: 'an an-eye',
-            action: (resource: unknown) => this.onViewResource(resource)
+            icon: 'an an-arrow-up-right',
+            action: (resource: unknown) => this.onViewResource(resource),
+            fixed: true
         }
     ];
 
@@ -86,6 +140,8 @@ export class ListComponent {
         this.logGridEvent('t-action-edit', selectedResource);
     };
 
+    private grid = viewChild<ThfGridComponent>(ThfGridComponent);
+
     constructor() {
         this.loadPage(1, false);
     }
@@ -93,9 +149,9 @@ export class ListComponent {
     protected onGridDeleteItems(event: unknown): void {
         this.logGridEvent('t-delete-items', event);
         if (Array.isArray(event)) {
-            const remaining = event.filter((item) => this.isReportGridItem(item));
+            const remaining = event.filter(item => this.isReportGridItem(item));
             this.gridItems.set(remaining);
-            this.totalItems.update((value) => Math.max(value - Math.max(this.selectedRows().length, 1), remaining.length));
+            this.totalItems.update(value => Math.max(value - Math.max(this.selectedRows().length, 1), remaining.length));
             this.selectedRows.set([]);
         }
     }
@@ -185,7 +241,7 @@ export class ListComponent {
         this.logGridEvent('t-rows-selected', event);
 
         if (Array.isArray(event)) {
-            this.selectedRows.set(event.filter((item) => this.isReportGridItem(item)));
+            this.selectedRows.set(event.filter(item => this.isReportGridItem(item)));
         }
     }
 
@@ -218,6 +274,17 @@ export class ListComponent {
         this.logGridEvent('t-all-unselected', event);
     }
 
+    protected deleteItemService(): ThfGridDeleteService {
+        const service: ThfGridDeleteService = {
+            deleteItem: (selectedRow, filterParams, keyValue) => {
+                this.logGridEvent('t-service-delete-api', { selectedRow, filterParams, keyValue });
+                return of(void 0);
+            }
+        };
+
+        return service;
+    }
+
     private loadPage(page: number, append: boolean): void {
         this.service
             .listResources({
@@ -225,13 +292,13 @@ export class ListComponent {
                 page,
                 pageSize: this.currentPageSize()
             })
-            .subscribe((result) => {
-                const mappedItems = result.items.map((item) => this.mapResourceToGridItem(item));
+            .subscribe(result => {
+                const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
                 this.totalItems.set(result.total);
                 this.currentPage.set(result.page);
 
                 if (append) {
-                    this.gridItems.update((items) => [...items, ...mappedItems]);
+                    this.gridItems.update(items => [...items, ...mappedItems]);
                 } else {
                     this.gridItems.set(mappedItems);
                 }
@@ -401,18 +468,12 @@ export class ListComponent {
 
     private logGridEvent(eventName: string, payload: unknown): void {
         const payloadPreview = this.stringifyPayload(payload);
-        const entry = payloadPreview ? `${eventName}: ${payloadPreview}` : eventName;
-
-        this.gridEventHistory.update((items) => [entry, ...items].slice(0, 12));
+        this.gridEventHistory.set({ eventName, payloadPreview });
     }
 
     private stringifyPayload(payload: unknown): string {
-        if (payload === undefined) {
-            return '';
-        }
-
         try {
-            return JSON.stringify(payload);
+            return JSON.stringify(payload ?? '{}', null, 2);
         } catch {
             return String(payload);
         }

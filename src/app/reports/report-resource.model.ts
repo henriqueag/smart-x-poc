@@ -21,7 +21,6 @@ export interface ReportResource {
     description: string;
     createdAt: string;
     isFavorite: boolean;
-    businessArea: ReportBusinessArea;
     owner: ReportResourceOwner;
     currentUser: ReportResourceCurrentUser;
 }

@@ -1,11 +1,11 @@
 <po-page-default p-title="Listagem de relatórios" [p-actions]="pageActions">
-    <div class="grid-summary" aria-live="polite">{{ totalLabel() }}</div>
+    <!-- <div class="grid-summary" aria-live="polite">{{ totalLabel() }}</div> -->
 
-    <thf-grid
+    <!-- <thf-grid
         [t-items]="gridItems()"
         [t-columns]="columns"
         [t-fields]="filterFields"
-        [t-pageable]="true"
+        [t-pageable]="false"
         [t-page-size]="currentPageSize()"
         [t-options-paging]="optionsPaging"
         [t-show-more-visible]="hasMoreItems()"
@@ -47,15 +47,47 @@
         (t-change-sort-column)="onGridChangeSortColumn($event)"
         (t-unselected)="onGridUnselected($event)"
         (t-all-unselected)="onGridAllUnselected($event)"
-    ></thf-grid>
+    ></thf-grid> -->
+
+    <thf-grid
+        [t-columns]="columns"
+        [t-items]="gridItems()"
+        [t-action-delete]="true"
+        [t-action-edit]="onGridEdit.bind(this)"
+        [t-selectable]="true"
+        [t-single-select]="true"
+        [t-actions-right]="true"
+        [t-custom-actions]="customActions"
+        [t-draggable]="true"
+        [t-fields]="filterFields"
+        [t-actions]="rowActions"
+        [t-filter-input-mode]="'service'"
+        [t-groupable]="true"
+        [t-page-size]="5"
+        [t-pageable]="true"
+        [t-resizable]="true"
+        [t-sort]="sortColumns"
+        [t-container]="true"
+        [t-service-delete-api]="deleteItemService()"
+        [t-options-paging]="optionsPaging"
+
+        (t-delete-item)="onGridDeleteItem($event)"
+        (t-change-group)="onGridChangeGroup($event)"
+        (t-change-order-column)="onGridChangeOrderColumn($event)"
+        (t-selected)="onGridSelected($event)"
+        (t-show-more)="onGridShowMore($event)"
+        (t-change-sort-column)="onGridChangeSortColumn($event)"
+    >
+
+
+    </thf-grid>
 
     <section class="grid-events" aria-label="Historico de eventos da grid">
         <h3>Eventos da grid</h3>
 
-        <ul>
-            @for (entry of gridEventHistory(); track entry) {
-                <li>{{ entry }}</li>
-            }
-        </ul>
+        @let entry = gridEventHistory();
+
+        <div>{{ entry.eventName }}</div>
+        <pre>{{ entry.payloadPreview }}</pre>
     </section>
 </po-page-default>
