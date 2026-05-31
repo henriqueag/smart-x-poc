@@ -31,6 +31,8 @@ export class ReportResourceService {
         }
     ];
 
+    private tags = ['Financeiro', 'Fiscal', 'Orçamento', 'RH'];
+
     private resourceTypes: ReportResourceType[] = ['report', 'pivot-table', 'data-grid'];
     private permissions: ReportPermission[] = ['Viewer', 'Editor', 'Owner'];
     private resources: ReportResource[] = this.createMockResources(120);
@@ -97,7 +99,8 @@ export class ReportResourceService {
                 owner: { ...owner },
                 currentUser: {
                     permission
-                }
+                },
+                tags: [this.tags[index % this.tags.length]]
             };
         });
     }

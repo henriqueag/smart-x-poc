@@ -1,0 +1,47 @@
+<div #container class="tag-overflow" tabindex="0" (focusin)="onContainerFocusIn()" (focusout)="onContainerFocusOut($event)">
+    <div #tagContainer class="tag-container" [class.expanded]="expanded()">
+        <div class="tag-wrapper" [class.expanded]="expanded()">
+            @for (tag of visibleTags(); track tag.value) {
+                <div #tagItem class="tag-item">
+                    <po-disclaimer [p-label]="tag.formattedValue ?? tag.value ?? tag.label" [p-hide-close]="false" (p-close-action)="remove.emit(tag)" />
+                </div>
+            } @empty {
+                <!-- <div class="empty-state">{{literals.TagOverflowComponent_Empty}}</div> -->
+            }
+
+            @if (!expanded() && hiddenCount() > 0) {
+                <div #moreTags class="tag-item more-tag" (click)="toggleExpand()">
+                    <po-disclaimer [p-label]="'+' + hiddenTags()" [p-hide-close]="true" />
+                </div>
+            }
+
+            @if (expanded()) {
+                @for (tag of tags().slice(visibleCount()); track tag.value) {
+                    <div class="tag-item">
+                        <po-disclaimer [p-label]="tag.formattedValue ?? tag.value ?? tag.label" [p-hide-close]="false" (p-close-action)="remove.emit(tag)" />
+                    </div>
+                }
+            }
+
+            @if (!readonly()) {
+                <div class="tag-entry" [style.--autocomplete-input-width]="inputWidthCh() + 'ch'">
+                    <input
+                        #autocompleteInput
+                        id="autocomplete-input"
+                        type="text"
+                        [value]="internalControl.value"
+                        [attr.aria-label]="literals.TagOverflowComponent_NewItem"
+                        (input)="onInputChange($event)"
+                        (keydown)="onInputKeydown($event)"
+                    />
+                </div>
+            }
+        </div>
+
+        <button
+            class="remove-all an an-x-circle"
+            (click)="removeAll.emit()"
+            [hidden]="visibleCount() === 0"
+        ></button>
+    </div>
+</div>

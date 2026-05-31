@@ -1,4 +1,7 @@
-<po-page-default p-title="Listagem de relatórios" [p-actions]="pageActions">
+<po-page-default
+    p-title="Listagem de relatórios"
+    [p-actions]="pageActions"
+>
     <!-- <div class="grid-summary" aria-live="polite">{{ totalLabel() }}</div> -->
 
     <!-- <thf-grid
@@ -70,6 +73,12 @@
         [t-container]="true"
         [t-service-delete-api]="deleteItemService()"
         [t-options-paging]="optionsPaging"
+        [t-auto-size]="false"
+        [t-show-more-disabled]="!hasMoreItems()"
+        [t-selectable-entire-line]="false"
+        [t-show-draggable-icon]="true"
+        [t-actions-filter]="true"
+
 
         (t-delete-item)="onGridDeleteItem($event)"
         (t-change-group)="onGridChangeGroup($event)"
@@ -77,12 +86,42 @@
         (t-selected)="onGridSelected($event)"
         (t-show-more)="onGridShowMore($event)"
         (t-change-sort-column)="onGridChangeSortColumn($event)"
+        (t-change-page-size)="onGridChangePageSize($event)"
+        (t-change-visible-columns)="onGridChangeVisibleColumns($event)"
+        (t-change-order-column)="onGridChangeOrderColumn($event)"
+        (t-restore-column-manager)="onGridRestoreColumnManager($event)"
+        (t-change-row-state-filter)="onGridChangeRowStateFilter($event)"
+        (t-change-filter-by-column)="onGridChangeFilterByColumn($event)"
+        (t-change-fixed-columns)="onGridChangeFixedColumns($event)"
+        (t-custom-filter)="onGridCustomFilter($event)"
+
     >
-
-
+        <ng-template
+            t-grid-cell-template
+            let-column="column"
+            let-row="row"
+        >
+            @if (column.property === 'tags') {
+                @if (row.tags?.length === 1) {
+                    <strong>{{ row.tags[0] }}</strong>
+                } @else {
+                    @for (tag of row.tags ?? []; let i = $index; track tag) {
+                        @if (i !== row.tags.length - 1) {
+                            <strong>{{ tag }}<span style="padding-right: 2px">,</span></strong>
+                        } @else {
+                            <strong> {{ tag }}</strong>
+                        }
+                    }
+                }
+            }
+        </ng-template>
     </thf-grid>
 
-    <section class="grid-events" aria-label="Historico de eventos da grid">
+
+    <section
+        class="grid-events"
+        aria-label="Historico de eventos da grid"
+    >
         <h3>Eventos da grid</h3>
 
         @let entry = gridEventHistory();

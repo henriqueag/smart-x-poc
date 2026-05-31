@@ -15,7 +15,7 @@
             },
             "architect": {
                 "build": {
-                    "builder": "@angular-devkit/build-angular:application",
+                    "builder": "@angular/build:application",
                     "options": {
                         "allowedCommonJsDependencies": ["*"],
                         "outputPath": {
@@ -57,13 +57,13 @@
                             "budgets": [
                                 {
                                     "type": "initial",
-                                    "maximumWarning": "12mb",
-                                    "maximumError": "20mb"
+                                    "maximumWarning": "2mb",
+                                    "maximumError": "4mb"
                                 },
                                 {
                                     "type": "anyComponentStyle",
-                                    "maximumWarning": "1000kb",
-                                    "maximumError": "1200kb"
+                                    "maximumWarning": "100kb",
+                                    "maximumError": "120kb"
                                 }
                             ]
                         }
@@ -71,9 +71,8 @@
                     "defaultConfiguration": ""
                 },
                 "serve": {
-                    "builder": "@angular-devkit/build-angular:dev-server",
+                    "builder": "@angular/build:dev-server",
                     "options": {
-                        "port": 4200,
                         "buildTarget": "smart-x-poc:build"
                     },
                     "configurations": {
@@ -83,7 +82,7 @@
                     }
                 },
                 "extract-i18n": {
-                    "builder": "@angular-devkit/build-angular:extract-i18n",
+                    "builder": "@angular/build:extract-i18n",
                     "options": {
                         "buildTarget": "smart-x-poc:build"
                     }

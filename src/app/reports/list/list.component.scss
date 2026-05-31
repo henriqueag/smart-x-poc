@@ -30,3 +30,9 @@
 	color: var(--color-neutral-dark-70);
 	font-size: var(--font-size-sm);
 }
+
+:host ::ng-deep thf-grid {
+    kendo-grid kendo-grid-toolbar .k-toolbar > * {
+        flex-shrink: 1;
+    }
+}

@@ -23,6 +23,7 @@ export interface ReportResource {
     isFavorite: boolean;
     owner: ReportResourceOwner;
     currentUser: ReportResourceCurrentUser;
+    tags: string[];
 }
 
 export interface ReportResourceListFilters {

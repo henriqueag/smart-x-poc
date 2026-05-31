@@ -1,9 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
-import { PoPageAction, PoPageModule } from '@po-ui/ng-components';
-import { ThfGridColumn, ThfGridColumnSort, ThfGridComponent, ThfGridDeleteService, ThfTableAction } from '@totvs/thf-components';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { PoButtonModule, PoDynamicFormField, PoFieldModule, PoPageAction, PoPageModule } from '@po-ui/ng-components';
+import {
+    ThfComponentsModule,
+    ThfGridColumn,
+    ThfGridColumnSort,
+    ThfGridComponent,
+    ThfGridDeleteService,
+    ThfTableAction
+} from '@totvs/thf-components';
+import { of } from 'rxjs';
 import { ReportResource, ReportResourceListFilters } from '../report-resource.model';
 import { ReportResourceService } from '../report-resource.service';
-import { of } from 'rxjs';
 
 interface ReportGridItem extends ReportResource {
     ownerDisplayName: string;
@@ -13,12 +21,12 @@ interface ReportGridItem extends ReportResource {
 
 @Component({
     selector: 'app-list',
-    imports: [PoPageModule, ThfGridComponent],
+    imports: [PoPageModule, PoButtonModule, PoFieldModule, ReactiveFormsModule, ThfComponentsModule],
     templateUrl: './list.component.html',
     styleUrl: './list.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ListComponent {
+export class ListComponent implements OnInit {
     protected readonly service = inject(ReportResourceService);
 
     protected readonly gridItems = signal<ReportGridItem[]>([]);
@@ -56,7 +64,9 @@ export class ListComponent {
             property: 'displayName',
             label: 'Nome',
             filter: true,
-            sortable: true
+            resizable: true,
+            sortable: true,
+            width: 500
         },
         {
             property: 'description',
@@ -64,7 +74,8 @@ export class ListComponent {
             filter: true,
             resizable: true,
             sortable: false,
-            visible: false
+            visible: false,
+            width: 300
         },
         {
             property: 'resourceType',
@@ -104,21 +115,69 @@ export class ListComponent {
             labels: [
                 { value: 'Viewer', label: 'Visualizador' },
                 { value: 'Editor', label: 'Editor' },
-                { value: 'Owner', label: 'Proprietário' },
+                { value: 'Owner', label: 'Proprietário' }
             ],
             width: 180
+        },
+        {
+            property: 'isFavorite',
+            label: 'Favorito',
+            type: 'icon',
+            icons: [
+                {
+                    icon: 'an-fill an-star',
+                    value: true as any,
+                    tooltip: 'Marcar como favorito',
+                    action: (row: any) => {
+                        this.gridItems.update(items => {
+                            items.find(item => item.id === row.id).isFavorite = false;
+                            return [...items];
+                        });
+                    }
+                },
+                {
+                    icon: 'an an-star',
+                    value: false as any,
+                    tooltip: 'Marcar como favorito',
+                    action: (row: any) => {
+                        this.gridItems.update(items => {
+                            items.find(item => item.id === row.id).isFavorite = true;
+                            return [...items];
+                        });
+                    }
+                }
+            ],
+            filter: false,
+            sortable: true,
+            width: 140
+        },
+        {
+            property: 'tags',
+            label: 'Marcação',
+            filter: true,
+            type: 'cellTemplate',
+            editProperties: {
+                componentEditable: 'multiselect',
+                options: [
+                    { value: 'Financeiro', label: 'Financeiro' },
+                    { value: 'Fiscal', label: 'Fiscal' },
+                    { value: 'Orçamento', label: 'Orçamento' },
+                    { value: 'RH', label: 'RH' }
+                ],
+                fieldLabel: 'label',
+                fieldValue: 'value'
+            }
         }
     ];
-    protected readonly sortColumns: ThfGridColumnSort[] = [
-        { field: 'createdAt', dir: 'desc' }
-    ]
+
+    protected readonly sortColumns: ThfGridColumnSort[] = [{ field: 'createdAt', dir: 'desc' }];
 
     protected readonly optionsPaging = [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 50 }];
 
-    protected readonly filterFields = [
+    protected readonly filterFields: PoDynamicFormField[] = [
         { property: 'displayName', label: 'Nome do recurso' },
         { property: 'description', label: 'Descricao' },
-        { property: 'isFavorite', label: 'Favorito' }
+        { property: 'isFavorite', label: 'Favorito', type: 'boolean' }
     ];
 
     protected readonly rowActions: ThfTableAction[] = [
@@ -129,6 +188,8 @@ export class ListComponent {
             fixed: true
         }
     ];
+
+    protected form: FormGroup;
 
     protected readonly customActions = [
         { label: 'Exportar', action: () => this.onBatchCustomAction('Exportar') },
@@ -144,6 +205,10 @@ export class ListComponent {
 
     constructor() {
         this.loadPage(1, false);
+    }
+
+    ngOnInit(): void {
+        console.log('');
     }
 
     protected onGridDeleteItems(event: unknown): void {
@@ -170,8 +235,6 @@ export class ListComponent {
 
     protected onGridChangeFilterByColumn(event: unknown): void {
         this.logGridEvent('t-change-filter-by-column', event);
-        this.activeFilters.set(this.extractFilters(event));
-        this.loadPage(1, false);
     }
 
     protected onGridChangeFixedColumns(event: unknown): void {

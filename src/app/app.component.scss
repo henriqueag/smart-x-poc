@@ -1,0 +1,15 @@
+.container-wrapper {
+    height: 40%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container-input {
+    width: 400px;
+    height: 250px;
+    padding: 1rem;
+    border: 1px solid gray;
+    border-radius: 8px;
+}
