@@ -2,8 +2,6 @@ export type ReportResourceType = 'report' | 'pivot-table' | 'data-grid';
 
 export type ReportPermission = 'Viewer' | 'Editor' | 'Owner';
 
-export type ReportBusinessArea = 'Financeiro' | 'Compras' | 'Estoque';
-
 export interface ReportResourceOwner {
     id: string;
     displayName: string;
@@ -27,9 +25,12 @@ export interface ReportResource {
 }
 
 export interface ReportResourceListFilters {
+    accessType?: string;
     displayName?: string;
     description?: string;
     isFavorite?: boolean;
+    resourceTypes?: ReportResourceType[];
+    tags?: string[];
 }
 
 export interface ReportResourceListQuery extends ReportResourceListFilters {

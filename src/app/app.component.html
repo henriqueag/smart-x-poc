@@ -3,20 +3,6 @@
     [p-menu-items]="headerActions"
 />
 
-<div style="padding-top: 2.75rem;">
-    <router-outlet/>
-</div>
-
-<div class="container-wrapper">
-    <div class="container-input">
-        <app-autocomplete
-            [tags]="tags()"
-            (add)="onTagAdd($event)"
-            (remove)="onTagRemove($event)"
-            (removeAll)="onTagRemoveAll()"
-            (keydown)="onAutocompleteKeydown($event)"
-        />
-        <!-- <po-input id="autocomplete"/>
-        <div class="autocomplete-box"></div> -->
-    </div>
+<div style="padding-top: 2.75rem">
+    <router-outlet />
 </div>

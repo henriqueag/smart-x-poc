@@ -1,15 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import {
     PoHeaderActions, //
     PoHeaderBrand,
     PoHeaderModule,
+    PoTagModule,
     PoThemeA11yEnum,
-    PoThemeTypeEnum,
-    PoTagModule
+    PoThemeTypeEnum
 } from '@po-ui/ng-components';
 import { poThemeTotvs, ThfThemeService } from '@totvs/themes';
-import { AutocompleteComponent, Disclaimer } from './autocomplete/autocomplete.component';
 
 @Component({
     selector: 'app-root',
@@ -18,8 +17,7 @@ import { AutocompleteComponent, Disclaimer } from './autocomplete/autocomplete.c
     imports: [
         RouterOutlet, //
         PoHeaderModule,
-        PoTagModule,
-        AutocompleteComponent
+        PoTagModule
     ]
 })
 export class AppComponent {
@@ -45,44 +43,5 @@ export class AppComponent {
 
     reload(commands: string[]) {
         this.router.navigate(['/'], { skipLocationChange: true }).then(() => this.router.navigate(commands));
-    }
-
-    tags = signal<Disclaimer[]>([]);
-
-    onTagAdd(value: string) {
-        const normalizedValue = value.trim();
-
-        if (!normalizedValue) {
-            return;
-        }
-
-        const alreadyExists = this.tags().some(tag => String(tag.value).toLowerCase() === normalizedValue.toLowerCase());
-
-        if (alreadyExists) {
-            return;
-        }
-
-        this.tags.update(tags => [
-            ...tags,
-            {
-                label: normalizedValue,
-                value: normalizedValue,
-                formattedValue: normalizedValue
-            }
-        ]);
-    }
-
-    onTagRemove(removedTag: Disclaimer) {
-        this.tags.update(tags => [...tags].filter(tag => tag.value !== removedTag.value));
-    }
-
-    onTagRemoveAll() {
-        this.tags.set([]);
-    }
-
-    onAutocompleteKeydown(event: KeyboardEvent) {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-        }
     }
 }

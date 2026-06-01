@@ -226,40 +226,217 @@ Justificativa:
 
 ---
 
-### 8. Filtro Customizado (t-custom-filter) — Modal de Filtro Avançado
+### 8. Diretrizes de Filtros — Definição de Abordagem Arquitetural
 
-Para o modal de filtro customizado, a estrutura sugerida:
+Esta seção apresenta as duas estratégias propostas para a comunicação de filtros entre a grid do PO-UI (`thf-grid`) e o backend C#. Ambas as opções cobrem a trindade de filtros da tela: **Global (Busca rápida)**, **Avançado (Modal)** e **Por Coluna (Nativo da Grid)**.
+
+---
+
+## OPÇÃO 1: Abordagem baseada em OData V4 (String de Texto)
+
+Esta abordagem padroniza toda a comunicação server-side utilizando o parâmetro `$filter` do protocolo OData V4 através de strings baseadas em texto.
+
+### 8.1 Filtro Global (Input de Busca da Tabela)
+
+O input de busca rápida na toolbar executa uma busca textual ampla usando a função `contains`.
+
+* **Regra OData:** `contains(Propriedade, 'Valor')`
+* **Exemplo de Envio:**
+
+```http
+GET /api/resources?$filter=contains(displayName, 'faturamento')
+
+```
+
+### 8.2 Filtro Avançado (Modal Dedicado)
+
+Os campos preenchidos no modal são concatenados na query string utilizando o operador lógico `and`.
+
+#### Mapeamento de Campos e Operadores OData
+
+* **Nível de acesso** (`po-combo`) ➔ `accessLevel eq 'meus'`
+* **Nome / Descrição** (`po-input`) ➔ `contains(name, 'Valor')`
+* **Favorito** (`po-radio-group`) ➔ `isFavorite eq true`
+* **Tipo** (`po-multiselect`) ➔ `(resourceType eq 'report' or resourceType eq 'data-grid')`
+* **Tags** (`po-multiselect`) ➔ Usar expressão lambda `any()` para coleções: `tags/any(t: t eq 'Financeiro' or t eq 'Fiscal')`
+
+#### Protótipo Visual do Modal
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  Filtro avançado                          [X]    │
+│  Filtro avançado                            [X]  │
 │                                                  │
 │  ── Nível de acesso ──────────────────────────   │
-│  [▼ Todos                              ]         │
-│     • Todos                                      │
-│     • Meus recursos                              │
-│     • Compartilhados comigo                      │
+│  [▼ Meus Recursos                     ]          │
 │                                                  │
 │  ── Filtro de propriedades ───────────────────   │
-│  Nome:         [________________________]        │
+│  Nome:         [Faturamento             ]        │
 │  Descrição:    [________________________]        │
-│  Favorito:     [○ Sim  ○ Não  ● Todos]           │
-│  Tipo:         [☑ Relatório ☑ Tabela ☑ Visão]    │
-│  Tags:         [▼ Selecione...          ]        │
+│  Favorito:     [● Sim  ○ Não  ○ Todos]           │
+│  Tipo:         [☑ Relatório ☑ Tabela ☐ Visão]    │
+│  Tags:         [▼ Financeiro, Fiscal    ]        │
 │                                                  │
 │               [Limpar filtros]  [Aplicar]        │
 └──────────────────────────────────────────────────┘
 ```
 
-**Componentes PO-UI:**
-- `po-modal` para o container
-- `po-combo` para nível de acesso
-- `po-input` para nome/descrição
-- `po-radio-group` para favorito
-- `po-multiselect` para tipo de recurso e tags
+#### Exemplo de URL OData Consolidada
 
-Ao aplicar, emitir os filtros para a API com operadores `inSql` para campos multi-valor (resourceType, tags).
+```http
+GET /api/resources?$filter=accessLevel eq 'meus' and contains(name, 'Faturamento') and isFavorite eq true and (resourceType eq 'report' or resourceType eq 'pivot-table') and tags/any(t: t eq 'Financeiro' or t eq 'Fiscal')
 
+```
+
+### 8.3 Filtros por Coluna (Nativo da Grid)
+
+A `thf-grid` emite nativamente um array de objetos estruturados contendo as regras aplicadas pelo usuário nos cabeçalhos das colunas:
+
+```json
+[
+  {
+    "property": "displayName",
+    "logic": "or",
+    "operator1": "contains",
+    "value1": "ath",
+    "operator2": "doesnotcontain",
+    "value2": "duff"
+  }
+]
+
+```
+
+**Tradução para OData no Front-end:** O serviço Angular precisa interceptar esse objeto e convertê-lo textualmente em:
+
+```http
+GET /api/resources?$filter=(contains(displayName, 'ath') or not contains(displayName, 'duff'))
+
+```
+
+### 8.4 Análise Técnica (OData)
+
+* **Prós:** Padrão de mercado aberto; se o backend já usar o pacote `Microsoft.AspNetCore.OData`, a conversão para SQL via EF Core é automática através do atributo `[EnableQuery]`.
+* **Contras:** Sem o pacote oficial no backend, exige a criação manual de parsers complexos com Regex e Expression Trees (C#) para ler as strings enviadas. Cria o fluxo ineficiente de transformar **Estrutura (Grid) ➔ Texto (URL) ➔ Estrutura (C# Expression)**.
+
+---
+
+## OPÇÃO 2: Abordagem baseada em DTO Estruturado (JSON Objeto)
+
+Esta abordagem elimina a necessidade de strings de consulta complexas, enviando um objeto JSON estruturado diretamente no corpo de uma requisição `POST` (ou serializado via `GET`). Ela preserva o formato nativo gerado pelos componentes do PO-UI.
+
+### 8.5 Contrato do DTO de Filtro (Modelagem C#)
+
+No backend, define-se um DTO robusto que reflete exatamente os campos mapeados na interface, incluindo o objeto nativo de filtro de colunas da Grid.
+
+```csharp
+public class FilterRequestDto
+{
+    // 1. Filtro Global Rápido
+    public string GlobalSearch { get; set; }
+
+    // 2. Filtros Avançados (Campos Fixos)
+    public string AccessLevel { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public bool? IsFavorite { get; set; }
+    public List<string> ResourceTypes { get; set; }
+    public List<string> Tags { get; set; }
+
+    // 3. Filtros por Coluna (Estrutura Nativa emitida pela thf-grid)
+    public List<GridColumnFilterDto> ColumnFilters { get; set; }
+}
+
+public class GridColumnFilterDto
+{
+    public string Property { get; set; }
+    public string Logic { get; set; } // "and" | "or"
+    public string Operator1 { get; set; }
+    public string Value1 { get; set; }
+    public string Operator2 { get; set; }
+    public string Value2 { get; set; }
+}
+
+```
+
+### 8.6 Mapeamento no Front-end (Payload JSON)
+
+Ao clicar em "Aplicar", o front-end simplesmente agrupa os estados dos Signals do modal e o array emitido pela Grid em um único JSON limpo:
+
+```json
+{
+  "accessLevel": "Any | Owner | Shared",
+  "isFavorite": true | false,
+  "resourceTypes": ["report", "pivot-table", "data-grid"],
+  "tags": ["Financeiro", "Fiscal"],
+  "columnFilters": [
+    {
+      "property": "displayName",
+      "logic": "or",
+      "operator1": "contains",
+      "value1": "ath",
+      "operator2": "doesnotcontain",
+      "value2": "duff"
+    }
+  ],
+  "columnsSort": [
+    { 
+        "field": "displayName", 
+        "direction": "desc" 
+    }
+  ]
+}
+```
+
+### 8.7 Resolução LINQ no Backend (C#)
+
+Como os dados chegam tipados, a aplicação dos filtros no Entity Framework torna-se direta, legível e segura contra SQL Injection:
+
+```csharp
+public IQueryable<Recurso> AplicarFiltros(IQueryable<Recurso> query, FilterRequestDto dto)
+{
+    // Filtro Global
+    if (!string.IsNullOrWhiteSpace(dto.GlobalSearch))
+        query = query.Where(x => x.DisplayName.Contains(dto.GlobalSearch));
+
+    // Filtro Avançado - Tags (Usa o .Any() nativo do LINQ de forma simples)
+    if (dto.Tags != null && dto.Tags.Any())
+        query = query.Where(x => x.Tags.Any(t => dto.Tags.Contains(t)));
+
+    // Filtro Avançado - Tipos
+    if (dto.ResourceTypes != null && dto.ResourceTypes.Any())
+        query = query.Where(x => dto.ResourceTypes.Contains(x.ResourceType));
+
+    // Filtros de Coluna Dinâmicos
+    if (dto.ColumnFilters != null && dto.ColumnFilters.Any())
+    {
+        // Nota: Pode ser resolvido via IFs internos ou usando a biblioteca leve 
+        // System.Linq.Dynamic.Core para aplicar queries dinâmicas baseadas em strings textuais
+        foreach (var col in dto.ColumnFilters)
+        {
+            if (col.Operator1 == "contains")
+                query = query.Where($"{col.Property}.Contains(@0)", col.Value1);
+        }
+    }
+
+    return query;
+}
+
+```
+
+### 8.8 Análise Técnica (DTO Estruturado)
+
+* **Prós:** Altamente intuitivo; manutenção simplificada; elimina código de conversão ("parsing") no front e no back; facilidade extrema para debugar inspecionando o payload JSON na aba Network do navegador; tratamento nativo do LINQ para coleções (`Tags.Any()`).
+* **Contras:** Foge do padrão REST estrito se necessitar usar um método `POST` para consultas (embora amplamente aceito na indústria para cenários de queries complexas / Search Endpoints).
+
+---
+
+## Comparativo para Tomada de Decisão
+
+| Critério                   | Opção 1: OData                                            | Opção 2: DTO Estruturado                          |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| **Complexidade no Front**  | Alta (Escrever rotinas de conversão para string OData)    | Baixa (Repassar o JSON nativo dos componentes)    |
+| **Complexidade no Back**   | Baixa (Se usar Lib oficial) / Altíssima (Se feito manual) | Baixa (Tratamento com IFs e LINQ tradicional)     |
+| **Flexibilidade de Busca** | Infinita (O front dita qualquer regra na URL)             | Restrita (Filtros avançados são limitados ao DTO) |
+| **Manutenção / Debug**     | Difícil (Exige decodificar strings extensas de URL)       | Fácil (Objeto JSON claro e fortemente tipado)     |
 ---
 
 ### 9. Estrutura de Arquivos Proposta (Evolução)

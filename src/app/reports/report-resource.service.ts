@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { faker } from '@faker-js/faker';
 import { Observable, of } from 'rxjs';
 import {
-    ReportBusinessArea,
     ReportPermission,
     ReportResource,
     ReportResourceListQuery,

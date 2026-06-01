@@ -88,6 +88,16 @@ Uma premissa importante é salvar o layout de forma silenciosa, então cada emis
 ]
 ```
 
+**Evento**: t-change-options-column-manager
+**Descrição**: Retornar se está marcado draggable ou groupable. Se nenhum estiver marcado retorna um array vazio
+
+```json
+[
+  "draggable",
+  "groupable"
+]
+```
+
 **Evento**: t-custom-filter
 **Descrição**: Permite implementar um filtro customizado. Para a listagem do Smart View utilizaremos essa opção abrindo um modal e nele vamos ter duas sessões:
 

@@ -1,56 +1,24 @@
 <po-page-default
-    p-title="Listagem de relatórios"
+    p-title="Listagem de recursos"
     [p-actions]="pageActions"
 >
-    <!-- <div class="grid-summary" aria-live="polite">{{ totalLabel() }}</div> -->
+    @if (pageButtonEl(); as buttonTarget) {
+        <po-popup
+            [p-actions]="popupActions"
+            [p-hide-arrow]="true"
+            [p-target]="buttonTarget"
+        />
+    }
 
-    <!-- <thf-grid
-        [t-items]="gridItems()"
-        [t-columns]="columns"
-        [t-fields]="filterFields"
-        [t-pageable]="false"
-        [t-page-size]="currentPageSize()"
-        [t-options-paging]="optionsPaging"
-        [t-show-more-visible]="hasMoreItems()"
-        [t-selectable]="true"
-        [t-selectable-entire-line]="true"
-        [t-action-edit]="onGridEdit"
-        [t-action-delete]="true"
-        [t-custom-actions]="customActions"
-        [t-actions]="rowActions"
-        [t-actions-right]="true"
-        [t-groupable]="true"
-        [t-group]="groupColumns()"
-        [t-sortable]="true"
-        [t-striped]="true"
-        [t-actions-filter]="true"
-        [t-hide-table-search]="false"
-        (t-delete-items)="onGridDeleteItems($event)"
-        (t-after-duplicate)="onGridAfterDuplicate($event)"
-        (t-before-duplicate)="onGridBeforeDuplicate($event)"
-        (t-change-aggregates)="onGridChangeAggregates($event)"
-        (t-change-filter-by-column)="onGridChangeFilterByColumn($event)"
-        (t-change-fixed-columns)="onGridChangeFixedColumns($event)"
-        (t-change-options-column-manager)="onGridChangeOptionsColumnManager($event)"
-        (t-change-row-state-filter)="onGridChangeRowStateFilter($event)"
-        (t-change-visible-columns)="onGridChangeVisibleColumns($event)"
-        (t-changed-density)="onGridChangedDensity($event)"
-        (t-changed-items)="onGridChangedItems($event)"
-        (t-restore-column-manager)="onGridRestoreColumnManager($event)"
-        (t-custom-filter)="onGridCustomFilter($event)"
-        (t-delete-item)="onGridDeleteItem($event)"
-        (t-change-page-size)="onGridChangePageSize($event)"
-        (t-items-after-get)="onGridItemsAfterGet($event)"
-        (t-change-group)="onGridChangeGroup($event)"
-        (t-change-order-column)="onGridChangeOrderColumn($event)"
-        (t-rows-selected)="onGridRowsSelected($event)"
-        (t-selected)="onGridSelected($event)"
-        (t-all-selected)="onGridAllSelected($event)"
-        (t-show-more)="onGridShowMore($event)"
-        (t-change-sort-column)="onGridChangeSortColumn($event)"
-        (t-unselected)="onGridUnselected($event)"
-        (t-all-unselected)="onGridAllUnselected($event)"
-    ></thf-grid> -->
+    <po-input
+        class="thf-grid-toolbar-input"
+        name="search-input"
+        p-labe="Buscar na tabela"
+        p-icon="ICON_SEARCH"
+        p-placeholder="Buscar na tabela"
+        [hidden]="true"
+        [formControl]="searchControl"
+    />
 
     <thf-grid
         [t-columns]="columns"
@@ -64,37 +32,31 @@
         [t-draggable]="true"
         [t-fields]="filterFields"
         [t-actions]="rowActions"
-        [t-filter-input-mode]="'service'"
         [t-groupable]="true"
-        [t-page-size]="5"
+        [t-page-size]="20"
         [t-pageable]="true"
         [t-resizable]="true"
         [t-sort]="sortColumns"
         [t-container]="true"
-        [t-service-delete-api]="deleteItemService()"
         [t-options-paging]="optionsPaging"
         [t-auto-size]="false"
         [t-show-more-disabled]="!hasMoreItems()"
         [t-selectable-entire-line]="false"
         [t-show-draggable-icon]="true"
         [t-actions-filter]="true"
-
-
         (t-delete-item)="onGridDeleteItem($event)"
         (t-change-group)="onGridChangeGroup($event)"
         (t-change-order-column)="onGridChangeOrderColumn($event)"
-        (t-selected)="onGridSelected($event)"
         (t-show-more)="onGridShowMore($event)"
         (t-change-sort-column)="onGridChangeSortColumn($event)"
         (t-change-page-size)="onGridChangePageSize($event)"
         (t-change-visible-columns)="onGridChangeVisibleColumns($event)"
         (t-change-order-column)="onGridChangeOrderColumn($event)"
         (t-restore-column-manager)="onGridRestoreColumnManager($event)"
-        (t-change-row-state-filter)="onGridChangeRowStateFilter($event)"
         (t-change-filter-by-column)="onGridChangeFilterByColumn($event)"
         (t-change-fixed-columns)="onGridChangeFixedColumns($event)"
         (t-custom-filter)="onGridCustomFilter($event)"
-
+        (t-change-options-column-manager)="onGridChangeOptionsColumnManager($event)"
     >
         <ng-template
             t-grid-cell-template
@@ -102,31 +64,58 @@
             let-row="row"
         >
             @if (column.property === 'tags') {
-                @if (row.tags?.length === 1) {
-                    <strong>{{ row.tags[0] }}</strong>
-                } @else {
-                    @for (tag of row.tags ?? []; let i = $index; track tag) {
-                        @if (i !== row.tags.length - 1) {
-                            <strong>{{ tag }}<span style="padding-right: 2px">,</span></strong>
-                        } @else {
-                            <strong> {{ tag }}</strong>
-                        }
-                    }
-                }
+                <span>{{ row.tags.join(', ') }}</span>
             }
         </ng-template>
     </thf-grid>
-
-
-    <section
-        class="grid-events"
-        aria-label="Historico de eventos da grid"
-    >
-        <h3>Eventos da grid</h3>
-
-        @let entry = gridEventHistory();
-
-        <div>{{ entry.eventName }}</div>
-        <pre>{{ entry.payloadPreview }}</pre>
-    </section>
 </po-page-default>
+
+<po-modal
+    #filterModal
+    p-title="Filtro avançado"
+    p-size="md"
+    [p-primary-action]="filterModalPrimaryAction"
+    [p-secondary-action]="filterModalSecondaryAction"
+>
+    <section class="advanced-filter-body">
+        <po-divider p-label="Nível de acesso"></po-divider>
+
+        <po-select
+            name="accessType"
+            [p-options]="accessTypeOptions"
+            [(ngModel)]="advancedFilter.accessType"
+        ></po-select>
+
+        <po-divider p-label="Filtro de propriedades"></po-divider>
+
+        <po-input
+            name="filterDescription"
+            p-label="Descrição"
+            p-placeholder="Descrição do recurso"
+            [(ngModel)]="advancedFilter.description"
+        ></po-input>
+
+        <po-radio-group
+            name="filterFavorite"
+            p-label="Favorito"
+            [p-columns]="3"
+            [p-options]="favoriteFilterOptions"
+            [(ngModel)]="advancedFilter.favorite"
+        ></po-radio-group>
+
+        <po-checkbox-group
+            name="filterTypes"
+            p-label="Tipo"
+            [p-columns]="3"
+            [p-options]="resourceTypeOptions"
+            [(ngModel)]="advancedFilter.types"
+        ></po-checkbox-group>
+
+        <po-multiselect
+            name="filterTags"
+            p-label="Tags"
+            [p-options]="tagCatalog"
+            [(ngModel)]="advancedFilter.tags"
+        ></po-multiselect>
+    </section>
+</po-modal>

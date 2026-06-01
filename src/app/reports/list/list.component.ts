@@ -1,17 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { PoButtonModule, PoDynamicFormField, PoFieldModule, PoPageAction, PoPageModule } from '@po-ui/ng-components';
+import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, inject, Renderer2, signal, viewChild } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
-    ThfComponentsModule,
-    ThfGridColumn,
-    ThfGridColumnSort,
-    ThfGridComponent,
-    ThfGridDeleteService,
-    ThfTableAction
-} from '@totvs/thf-components';
-import { of } from 'rxjs';
-import { ReportResource, ReportResourceListFilters } from '../report-resource.model';
+    PoDynamicFormField,
+    PoModalAction,
+    PoModalComponent,
+    PoModule,
+    PoMultiselectOption,
+    PoPageAction,
+    PoPageDefaultComponent,
+    PoPopupAction,
+    PoPopupComponent
+} from '@po-ui/ng-components';
+import { ThfComponentsModule, ThfGridColumn, ThfGridColumnSort, ThfGridComponent, ThfTableAction } from '@totvs/thf-components';
+import { ReportResource, ReportResourceListFilters, ReportResourceListQuery, ReportResourceType } from '../report-resource.model';
 import { ReportResourceService } from '../report-resource.service';
+import { debounceTime, distinctUntilChanged, filter, min, switchMap, tap } from 'rxjs';
 
 interface ReportGridItem extends ReportResource {
     ownerDisplayName: string;
@@ -21,49 +24,67 @@ interface ReportGridItem extends ReportResource {
 
 @Component({
     selector: 'app-list',
-    imports: [PoPageModule, PoButtonModule, PoFieldModule, ReactiveFormsModule, ThfComponentsModule],
+    imports: [
+        PoModule,
+        FormsModule,
+        ReactiveFormsModule,
+        ThfComponentsModule
+    ],
     templateUrl: './list.component.html',
     styleUrl: './list.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ListComponent implements OnInit {
-    protected readonly service = inject(ReportResourceService);
+export class ListComponent implements AfterViewInit {
+    // Serviços e injeções da view
+    private service = inject(ReportResourceService);
+    private elRef = inject(ElementRef);
+    private renderer = inject(Renderer2);
 
-    protected readonly gridItems = signal<ReportGridItem[]>([]);
-    protected readonly gridEventHistory = signal<any>({});
-    protected readonly selectedRows = signal<ReportGridItem[]>([]);
-    protected readonly currentPage = signal(1);
-    protected readonly currentPageSize = signal(5);
-    protected readonly totalItems = signal(0);
-    protected readonly groupColumns = signal<string[]>(['businessArea']);
+    // Estado base da tela
+    gridItems = signal<ReportGridItem[]>([]);
+    gridEventHistory = signal<any>({});
+    selectedRows = signal<ReportGridItem[]>([]);
+    currentPage = signal(1);
+    currentPageSize = signal(15);
+    totalItems = signal(0);
+    groupColumns = signal<string[]>(['businessArea']);
 
-    protected readonly hasMoreItems = computed(() => this.gridItems().length < this.totalItems());
-    protected readonly totalLabel = computed(() => `${this.gridItems().length} de ${this.totalItems()} recursos`);
+    // Estados derivados
+    hasMoreItems = computed(() => this.gridItems().length < this.totalItems());
+    totalLabel = computed(() => `${this.gridItems().length} de ${this.totalItems()} recursos`);
 
-    private readonly activeFilters = signal<ReportResourceListFilters>({});
+    // Filtros ativos e ajustes auxiliares
+    searchControl = new FormControl('');
+    activeFilters = signal<ReportResourceListFilters>({});
 
-    protected readonly pageActions: PoPageAction[] = [
+    // Ações da página
+    pageActions: PoPageAction[] = [
         {
             label: 'Incluir',
             icon: 'an an-plus',
-            url: '/reports/create'
+            action: () => this.popup().toggle()
         },
         {
             label: 'Recarregar',
             action: () => this.loadPage(1, false)
-        },
-        {
-            label: 'Limpar filtros',
-            action: () => this.clearFilters()
         }
     ];
 
-    protected readonly columns: ThfGridColumn[] = [
+    // Ações do popup de inclusão
+    pageButtonEl = signal<ElementRef>(null);
+    popupActions: PoPopupAction[] = [
+        { label: 'Relatórios', icon: 'an an-newspaper', action: () => alert('Cadastro de relatório') },
+        { label: 'Tabela dinâmica', icon: 'an-fill an-crown', action: () => alert('Cadastro de tabela dinâmica') },
+        { label: 'Visão de dados', icon: 'an-fill an-grid-four', action: () => alert('Cadastro de visão de dados') }
+    ];
+
+    // #region Configuração da grid
+    columns: ThfGridColumn[] = [
         { property: 'id', key: true, visible: false },
         {
             property: 'displayName',
             label: 'Nome',
-            filter: true,
+            filter: false,
             resizable: true,
             sortable: true,
             width: 500
@@ -71,7 +92,7 @@ export class ListComponent implements OnInit {
         {
             property: 'description',
             label: 'Descricao',
-            filter: true,
+            filter: false,
             resizable: true,
             sortable: false,
             visible: false,
@@ -80,7 +101,7 @@ export class ListComponent implements OnInit {
         {
             property: 'resourceType',
             label: 'Tipo',
-            filter: true,
+            filter: false,
             type: 'label',
             labels: [
                 { value: 'report', label: 'Relatório', color: 'color-07', icon: 'an an-newspaper' },
@@ -102,7 +123,7 @@ export class ListComponent implements OnInit {
         {
             property: 'ownerDisplayName',
             label: 'Proprietário',
-            filter: true,
+            filter: false,
             sortable: true,
             width: 250
         },
@@ -110,7 +131,7 @@ export class ListComponent implements OnInit {
             property: 'permission',
             label: 'Permissao',
             type: 'label',
-            filter: true,
+            filter: false,
             sortable: true,
             labels: [
                 { value: 'Viewer', label: 'Visualizador' },
@@ -154,33 +175,22 @@ export class ListComponent implements OnInit {
         {
             property: 'tags',
             label: 'Marcação',
-            filter: true,
-            type: 'cellTemplate',
-            editProperties: {
-                componentEditable: 'multiselect',
-                options: [
-                    { value: 'Financeiro', label: 'Financeiro' },
-                    { value: 'Fiscal', label: 'Fiscal' },
-                    { value: 'Orçamento', label: 'Orçamento' },
-                    { value: 'RH', label: 'RH' }
-                ],
-                fieldLabel: 'label',
-                fieldValue: 'value'
-            }
+            filter: false,
+            type: 'cellTemplate'
         }
     ];
 
-    protected readonly sortColumns: ThfGridColumnSort[] = [{ field: 'createdAt', dir: 'desc' }];
+    sortColumns: ThfGridColumnSort[] = [{ field: 'createdAt', dir: 'desc' }];
 
-    protected readonly optionsPaging = [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 50 }];
+    optionsPaging = [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 50 }];
 
-    protected readonly filterFields: PoDynamicFormField[] = [
+    filterFields: PoDynamicFormField[] = [
         { property: 'displayName', label: 'Nome do recurso' },
         { property: 'description', label: 'Descricao' },
         { property: 'isFavorite', label: 'Favorito', type: 'boolean' }
     ];
 
-    protected readonly rowActions: ThfTableAction[] = [
+    rowActions: ThfTableAction[] = [
         {
             label: 'Visualizar',
             icon: 'an an-arrow-up-right',
@@ -189,29 +199,119 @@ export class ListComponent implements OnInit {
         }
     ];
 
-    protected form: FormGroup;
-
-    protected readonly customActions = [
+    customActions = [
         { label: 'Exportar', action: () => this.onBatchCustomAction('Exportar') },
         { label: 'Duplicar', action: () => this.onBatchCustomAction('Duplicar') },
         { label: 'Compartilhar', action: () => this.onBatchCustomAction('Compartilhar') }
     ];
+    // #endregion
 
-    protected readonly onGridEdit = (selectedResource: unknown): void => {
-        this.logGridEvent('t-action-edit', selectedResource);
+    // #region Estado do modal de filtro avançado
+    advancedFilter = {
+        accessType: 'All',
+        name: '',
+        description: '',
+        favorite: 'all',
+        types: [] as string[],
+        tags: [] as string[]
     };
 
-    private grid = viewChild<ThfGridComponent>(ThfGridComponent);
+    accessTypeOptions = [
+        { value: 'All', label: 'Todos' },
+        { value: 'Owner', label: 'Meus Recursos' },
+        { value: 'Shared', label: 'Compartilhados comigo' }
+    ];
 
+    favoriteFilterOptions = [
+        { value: 'all', label: 'Todos' },
+        { value: 'true', label: 'Sim' },
+        { value: 'false', label: 'Não' }
+    ];
+
+    resourceTypeOptions = [
+        { value: 'report', label: 'Relatório' },
+        { value: 'pivot-table', label: 'Tabela' },
+        { value: 'data-grid', label: 'Visão' }
+    ];
+
+    filterModalPrimaryAction: PoModalAction = {
+        label: 'Aplicar',
+        action: () => {
+            this.applyAdvancedFilters();
+            this.buildFilterQueryString();
+        }
+    };
+
+    filterModalSecondaryAction: PoModalAction = {
+        label: 'Limpar filtros',
+        action: () => this.clearAdvancedFilters()
+    };
+
+    tagCatalog: PoMultiselectOption[] = [
+        { label: 'Financeiro', value: 'Financeiro' },
+        { label: 'Fiscal', value: 'Fiscal' },
+        { label: 'Orçamento', value: 'Orçamento' },
+        { label: 'RH', value: 'RH' }
+    ];
+    // #endregion
+
+    // References da view
+    private grid = viewChild<ThfGridComponent>(ThfGridComponent);
+    private gridEl = viewChild(ThfGridComponent, { read: ElementRef });
+    private filterModal = viewChild<PoModalComponent>('filterModal');
+    private popup = viewChild<PoPopupComponent>(PoPopupComponent);
+    private pageDefault = viewChild(PoPageDefaultComponent, { read: ElementRef });
+
+    // Inicialização
     constructor() {
         this.loadPage(1, false);
+
+        this.searchControl.valueChanges.pipe(
+            filter(val => val.length <= 0 || val.length >= 3),
+            distinctUntilChanged(),
+            debounceTime(300),
+            switchMap((value) => {
+                const query: ReportResourceListQuery = {
+                    page: 1,
+                    pageSize: this.currentPageSize(),
+                    displayName: value
+                };
+                return this.service.listResources(query).pipe(tap(result => {
+                    const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
+                    this.totalItems.set(result.total);
+                    this.currentPage.set(result.page);
+                    this.gridItems.set(mappedItems);
+                }));
+            })
+        ).subscribe()
     }
 
-    ngOnInit(): void {
-        console.log('');
+    // Ajustes pós-renderização da grid e do toolbar search
+    ngAfterViewInit(): void {
+        queueMicrotask(() => {
+            // Atribuição do elementRef do botão incluir
+            this.pageButtonEl.set(this.pageDefault().nativeElement.querySelector('.po-page-header-actions po-button[p-kind=primary]'));
+
+            // Alteração na grid
+            const dateOperators = ['eq', 'neq', 'gte', 'gt', 'lte', 'lt'];
+            this.grid()['dateOptions'] = this.grid()['dateOptions'].filter(opt => dateOperators.includes(opt.value));
+
+            const nativeSarchInput = this.gridEl().nativeElement.querySelector('kendo-grid-toolbar po-input[name=input]') as HTMLElement;
+            const nativeSarchInputParent = this.renderer.parentNode(nativeSarchInput);
+            const newSearchInput = this.elRef.nativeElement.querySelector('po-input[name=search-input]') as HTMLElement;
+
+            this.renderer.removeAttribute(newSearchInput, 'hidden');
+            this.renderer.removeChild(nativeSarchInputParent, nativeSarchInput);
+            this.renderer.appendChild(nativeSarchInputParent, newSearchInput);
+        });
     }
 
-    protected onGridDeleteItems(event: unknown): void {
+    // #region Eventos da grid
+    onGridEdit(selectedResource: unknown): void {
+        this.logGridEvent('t-action-edit', selectedResource);
+    }
+
+    onGridDeleteItems(event: unknown): void {
         this.logGridEvent('t-delete-items', event);
         if (Array.isArray(event)) {
             const remaining = event.filter(item => this.isReportGridItem(item));
@@ -221,59 +321,36 @@ export class ListComponent implements OnInit {
         }
     }
 
-    protected onGridAfterDuplicate(event: unknown): void {
-        this.logGridEvent('t-after-duplicate', event);
-    }
-
-    protected onGridBeforeDuplicate(event: unknown): void {
-        this.logGridEvent('t-before-duplicate', event);
-    }
-
-    protected onGridChangeAggregates(event: unknown): void {
-        this.logGridEvent('t-change-aggregates', event);
-    }
-
-    protected onGridChangeFilterByColumn(event: unknown): void {
+    onGridChangeFilterByColumn(event: unknown): void {
         this.logGridEvent('t-change-filter-by-column', event);
     }
 
-    protected onGridChangeFixedColumns(event: unknown): void {
+    onGridChangeFixedColumns(event: unknown): void {
         this.logGridEvent('t-change-fixed-columns', event);
     }
 
-    protected onGridChangeOptionsColumnManager(event: unknown): void {
+    onGridChangeOptionsColumnManager(event: unknown): void {
         this.logGridEvent('t-change-options-column-manager', event);
     }
 
-    protected onGridChangeRowStateFilter(event: unknown): void {
-        this.logGridEvent('t-change-row-state-filter', event);
-    }
-
-    protected onGridChangeVisibleColumns(event: unknown): void {
+    onGridChangeVisibleColumns(event: unknown): void {
         this.logGridEvent('t-change-visible-columns', event);
     }
 
-    protected onGridChangedDensity(event: unknown): void {
-        this.logGridEvent('t-changed-density', event);
-    }
-
-    protected onGridChangedItems(event: unknown): void {
-        this.logGridEvent('t-changed-items', event);
-    }
-
-    protected onGridRestoreColumnManager(event: unknown): void {
+    onGridRestoreColumnManager(event: unknown): void {
         this.logGridEvent('t-restore-column-manager', event);
     }
 
-    protected onGridCustomFilter(event: unknown): void {
+    onGridCustomFilter(event: unknown): void {
         this.logGridEvent('t-custom-filter', event);
+        this.filterModal()?.open();
     }
 
-    protected onGridDeleteItem(event: unknown): void {
+    onGridDeleteItem(event: unknown): void {
         this.logGridEvent('t-delete-item', event);
     }
 
-    protected onGridChangePageSize(event: unknown): void {
+    onGridChangePageSize(event: unknown): void {
         this.logGridEvent('t-change-page-size', event);
 
         const parsedPageSize = this.extractPageSize(event);
@@ -283,11 +360,7 @@ export class ListComponent implements OnInit {
         }
     }
 
-    protected onGridItemsAfterGet(event: unknown): void {
-        this.logGridEvent('t-items-after-get', event);
-    }
-
-    protected onGridChangeGroup(event: unknown): void {
+    onGridChangeGroup(event: unknown): void {
         this.logGridEvent('t-change-group', event);
 
         if (Array.isArray(event)) {
@@ -296,27 +369,11 @@ export class ListComponent implements OnInit {
         }
     }
 
-    protected onGridChangeOrderColumn(event: unknown): void {
+    onGridChangeOrderColumn(event: unknown): void {
         this.logGridEvent('t-change-order-column', event);
     }
 
-    protected onGridRowsSelected(event: unknown): void {
-        this.logGridEvent('t-rows-selected', event);
-
-        if (Array.isArray(event)) {
-            this.selectedRows.set(event.filter(item => this.isReportGridItem(item)));
-        }
-    }
-
-    protected onGridSelected(event: unknown): void {
-        this.logGridEvent('t-selected', event);
-    }
-
-    protected onGridAllSelected(event: unknown): void {
-        this.logGridEvent('t-all-selected', event);
-    }
-
-    protected onGridShowMore(event: unknown): void {
+    onGridShowMore(event: unknown): void {
         this.logGridEvent('t-show-more', event);
         if (!this.hasMoreItems()) {
             return;
@@ -325,29 +382,12 @@ export class ListComponent implements OnInit {
         this.loadPage(this.currentPage() + 1, true);
     }
 
-    protected onGridChangeSortColumn(event: unknown): void {
+    onGridChangeSortColumn(event: unknown): void {
         this.logGridEvent('t-change-sort-column', event);
     }
+    // #endregion
 
-    protected onGridUnselected(event: unknown): void {
-        this.logGridEvent('t-unselected', event);
-    }
-
-    protected onGridAllUnselected(event: unknown): void {
-        this.logGridEvent('t-all-unselected', event);
-    }
-
-    protected deleteItemService(): ThfGridDeleteService {
-        const service: ThfGridDeleteService = {
-            deleteItem: (selectedRow, filterParams, keyValue) => {
-                this.logGridEvent('t-service-delete-api', { selectedRow, filterParams, keyValue });
-                return of(void 0);
-            }
-        };
-
-        return service;
-    }
-
+    // #region Carregamento e mapeamento de dados
     private loadPage(page: number, append: boolean): void {
         this.service
             .listResources({
@@ -374,11 +414,6 @@ export class ListComponent implements OnInit {
             });
     }
 
-    private clearFilters(): void {
-        this.activeFilters.set({});
-        this.loadPage(1, false);
-    }
-
     private mapResourceToGridItem(item: ReportResource): ReportGridItem {
         return {
             ...item,
@@ -387,7 +422,9 @@ export class ListComponent implements OnInit {
             permission: item.currentUser.permission
         };
     }
+    // #endregion
 
+    // #region Ações auxiliares da tela
     private onViewResource(resource: unknown): void {
         this.logGridEvent('view-resource', resource);
     }
@@ -397,64 +434,9 @@ export class ListComponent implements OnInit {
             selectedRows: this.selectedRows().length
         });
     }
+    // #endregion
 
-    private extractFilters(event: unknown): ReportResourceListFilters {
-        const nextFilters: ReportResourceListFilters = {};
-
-        if (!Array.isArray(event)) {
-            return nextFilters;
-        }
-
-        for (const filter of event) {
-            if (!this.isObject(filter)) {
-                continue;
-            }
-
-            const property = this.readString(filter, 'property') ?? this.readString(filter, 'field');
-            const rawValue = this.readFilterValue(filter);
-
-            if (property === 'displayName') {
-                const displayName = this.toNonEmptyString(rawValue);
-                if (displayName) {
-                    nextFilters.displayName = displayName;
-                }
-            }
-
-            if (property === 'description') {
-                const description = this.toNonEmptyString(rawValue);
-                if (description) {
-                    nextFilters.description = description;
-                }
-            }
-
-            if (property === 'isFavorite') {
-                const favorite = this.toBoolean(rawValue);
-                if (typeof favorite === 'boolean') {
-                    nextFilters.isFavorite = favorite;
-                }
-            }
-        }
-
-        return nextFilters;
-    }
-
-    private readFilterValue(filter: Record<string, unknown>): unknown {
-        if ('value' in filter) {
-            return filter.value;
-        }
-
-        if ('values' in filter && Array.isArray(filter.values) && filter.values.length > 0) {
-            const value = filter.values[0];
-            if (this.isObject(value) && 'value' in value) {
-                return value.value;
-            }
-
-            return value;
-        }
-
-        return undefined;
-    }
-
+    // #region Utilitários de parsing e validação
     private extractPageSize(event: unknown): number | undefined {
         if (!this.isObject(event)) {
             return undefined;
@@ -481,37 +463,6 @@ export class ListComponent implements OnInit {
         return Math.floor(value);
     }
 
-    private toBoolean(value: unknown): boolean | undefined {
-        if (typeof value === 'boolean') {
-            return value;
-        }
-
-        if (typeof value === 'string') {
-            if (value.toLowerCase() === 'true') {
-                return true;
-            }
-
-            if (value.toLowerCase() === 'false') {
-                return false;
-            }
-        }
-
-        return undefined;
-    }
-
-    private toNonEmptyString(value: unknown): string | undefined {
-        if (typeof value !== 'string') {
-            return undefined;
-        }
-
-        const normalized = value.trim();
-        if (!normalized) {
-            return undefined;
-        }
-
-        return normalized;
-    }
-
     private isReportGridItem(value: unknown): value is ReportGridItem {
         if (!this.isObject(value)) {
             return false;
@@ -523,22 +474,88 @@ export class ListComponent implements OnInit {
     private isObject(value: unknown): value is Record<string, unknown> {
         return typeof value === 'object' && value !== null;
     }
+    // #endregion
 
-    private readString(target: Record<string, unknown>, property: string): string | undefined {
-        const value = target[property];
-        return typeof value === 'string' ? value : undefined;
-    }
+    // #region Filtro avançado
+    private applyAdvancedFilters(): void {
+        const filters: ReportResourceListFilters = {};
 
-    private logGridEvent(eventName: string, payload: unknown): void {
-        const payloadPreview = this.stringifyPayload(payload);
-        this.gridEventHistory.set({ eventName, payloadPreview });
-    }
+        const accessType = this.advancedFilter.accessType;
+        if (accessType) filters.accessType = accessType;
 
-    private stringifyPayload(payload: unknown): string {
-        try {
-            return JSON.stringify(payload ?? '{}', null, 2);
-        } catch {
-            return String(payload);
+        const name = this.advancedFilter.name.trim();
+        if (name) filters.displayName = name;
+
+        const desc = this.advancedFilter.description.trim();
+        if (desc) filters.description = desc;
+
+        if (this.advancedFilter.favorite === 'true') filters.isFavorite = true;
+        else if (this.advancedFilter.favorite === 'false') filters.isFavorite = false;
+
+        if (this.advancedFilter.types.length > 0) {
+            filters.resourceTypes = this.advancedFilter.types as ReportResourceType[];
         }
+
+        if (this.advancedFilter.tags.length > 0) {
+            filters.tags = [...this.advancedFilter.tags];
+        }
+
+        this.activeFilters.set(filters);
+        this.loadPage(1, false);
+        this.filterModal()?.close();
+    }
+
+    private clearAdvancedFilters(): void {
+        this.advancedFilter.accessType = 'all';
+        this.advancedFilter.name = '';
+        this.advancedFilter.description = '';
+        this.advancedFilter.favorite = 'all';
+        this.advancedFilter.types = [];
+        this.advancedFilter.tags = [];
+    }
+
+    private buildFilterQueryString() {
+        const activeFilters = this.activeFilters();
+
+        if (Object.keys(activeFilters).length <= 0) return;
+
+        const queryParams: any = {};
+
+        queryParams.accessType = activeFilters.accessType?.trim() ?? 'All';
+
+        const name = activeFilters.displayName?.trim() ?? '';
+        if (name.length > 0) queryParams.displayName = name;
+
+        const desc = activeFilters.description?.trim() ?? '';
+        if (desc.length > 0) queryParams.description = desc;
+
+        if ('isFavorite' in activeFilters) {
+            queryParams.isFavorite = activeFilters.isFavorite;
+        }
+
+        if (activeFilters.resourceTypes?.length > 0) {
+            activeFilters.resourceTypes.forEach((val, ix) => (queryParams[`resourceTypes[${ix}]`] = val));
+        }
+
+        if (activeFilters.tags?.length > 0) {
+            activeFilters.tags.forEach((val, ix) => (queryParams[`tags[${ix}]`] = val));
+        }
+
+        const query = Object.entries(queryParams)
+            .map(entry => `${entry[0]}=${entry[1]}`)
+            .join('&');
+        console.log({
+            queryParams,
+            queryString: query
+        });
+    }
+    // #endregion
+
+    // Histórico de eventos da grid
+    private logGridEvent(eventName: string, payload: unknown): void {
+        console.log({
+            eventName,
+            payload: JSON.stringify(payload ?? '{}', null, 2)
+        });
     }
 }
