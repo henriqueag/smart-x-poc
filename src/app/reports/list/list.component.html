@@ -54,7 +54,7 @@
 
     <thf-grid
         [t-columns]="columns"
-        [t-items]="gridItems()"
+        [t-service-api]="'http://localhost:4201/api/resources'"
         [t-action-delete]="true"
         [t-action-edit]="onGridEdit.bind(this)"
         [t-selectable]="true"

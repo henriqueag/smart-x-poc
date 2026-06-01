@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, OnInit, signal, viewChild } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { PoButtonModule, PoDynamicFormField, PoFieldModule, PoPageAction, PoPageModule } from '@po-ui/ng-components';
 import {
@@ -11,7 +11,6 @@ import {
 } from '@totvs/thf-components';
 import { of } from 'rxjs';
 import { ReportResource, ReportResourceListFilters } from '../report-resource.model';
-import { ReportResourceService } from '../report-resource.service';
 
 interface ReportGridItem extends ReportResource {
     ownerDisplayName: string;
@@ -27,7 +26,6 @@ interface ReportGridItem extends ReportResource {
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ListComponent implements OnInit {
-    protected readonly service = inject(ReportResourceService);
 
     protected readonly gridItems = signal<ReportGridItem[]>([]);
     protected readonly gridEventHistory = signal<any>({});
@@ -50,7 +48,7 @@ export class ListComponent implements OnInit {
         },
         {
             label: 'Recarregar',
-            action: () => this.loadPage(1, false)
+            action: () => { }
         },
         {
             label: 'Limpar filtros',
@@ -204,7 +202,7 @@ export class ListComponent implements OnInit {
     private grid = viewChild<ThfGridComponent>(ThfGridComponent);
 
     constructor() {
-        this.loadPage(1, false);
+        // this.loadPage(1, false);
     }
 
     ngOnInit(): void {
@@ -279,7 +277,7 @@ export class ListComponent implements OnInit {
         const parsedPageSize = this.extractPageSize(event);
         if (parsedPageSize) {
             this.currentPageSize.set(parsedPageSize);
-            this.loadPage(1, false);
+            // this.loadPage(1, false);
         }
     }
 
@@ -322,7 +320,7 @@ export class ListComponent implements OnInit {
             return;
         }
 
-        this.loadPage(this.currentPage() + 1, true);
+        // this.loadPage(this.currentPage() + 1, true);
     }
 
     protected onGridChangeSortColumn(event: unknown): void {
@@ -348,35 +346,35 @@ export class ListComponent implements OnInit {
         return service;
     }
 
-    private loadPage(page: number, append: boolean): void {
-        this.service
-            .listResources({
-                ...this.activeFilters(),
-                page,
-                pageSize: this.currentPageSize()
-            })
-            .subscribe(result => {
-                const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
-                this.totalItems.set(result.total);
-                this.currentPage.set(result.page);
+    // private loadPage(page: number, append: boolean): void {
+    //     this.service
+    //         .listResources({
+    //             ...this.activeFilters(),
+    //             page,
+    //             pageSize: this.currentPageSize()
+    //         })
+    //         .subscribe(result => {
+    //             const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
+    //             this.totalItems.set(result.total);
+    //             this.currentPage.set(result.page);
 
-                if (append) {
-                    this.gridItems.update(items => [...items, ...mappedItems]);
-                } else {
-                    this.gridItems.set(mappedItems);
-                }
+    //             if (append) {
+    //                 this.gridItems.update(items => [...items, ...mappedItems]);
+    //             } else {
+    //                 this.gridItems.set(mappedItems);
+    //             }
 
-                this.logGridEvent('load-page', {
-                    page: result.page,
-                    pageSize: result.pageSize,
-                    total: result.total
-                });
-            });
-    }
+    //             this.logGridEvent('load-page', {
+    //                 page: result.page,
+    //                 pageSize: result.pageSize,
+    //                 total: result.total
+    //             });
+    //         });
+    // }
 
     private clearFilters(): void {
         this.activeFilters.set({});
-        this.loadPage(1, false);
+        // this.loadPage(1, false);
     }
 
     private mapResourceToGridItem(item: ReportResource): ReportGridItem {
