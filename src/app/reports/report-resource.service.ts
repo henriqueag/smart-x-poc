@@ -30,7 +30,7 @@ export class ReportResourceService {
         }
     ];
 
-    private tags = ['Financeiro', 'Fiscal', 'Orçamento', 'RH'];
+    tags = ['Financeiro', 'Fiscal', 'Orçamento', 'RH'];
 
     private resourceTypes: ReportResourceType[] = ['report', 'pivot-table', 'data-grid'];
     private permissions: ReportPermission[] = ['Viewer', 'Editor', 'Owner'];

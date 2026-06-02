@@ -37,13 +37,14 @@
         [t-pageable]="true"
         [t-resizable]="true"
         [t-sort]="sortColumns"
-        [t-container]="true"
+        [t-container]="false"
         [t-options-paging]="optionsPaging"
         [t-auto-size]="false"
         [t-show-more-disabled]="!hasMoreItems()"
         [t-selectable-entire-line]="false"
-        [t-show-draggable-icon]="true"
+        [t-show-draggable-icon]="false"
         [t-actions-filter]="true"
+        [t-literals]="gridLiterals"
         (t-delete-item)="onGridDeleteItem($event)"
         (t-change-group)="onGridChangeGroup($event)"
         (t-change-order-column)="onGridChangeOrderColumn($event)"
@@ -57,6 +58,8 @@
         (t-change-fixed-columns)="onGridChangeFixedColumns($event)"
         (t-custom-filter)="onGridCustomFilter($event)"
         (t-change-options-column-manager)="onGridChangeOptionsColumnManager($event)"
+        (t-selected)="selectedRowId.set($event.id)"
+        (t-unselected)="selectedRowId.set(null)"
     >
         <ng-template
             t-grid-cell-template
@@ -64,7 +67,24 @@
             let-row="row"
         >
             @if (column.property === 'tags') {
-                <span>{{ row.tags.join(', ') }}</span>
+                <div
+                    style="
+                        flex: 1;
+                        padding-inline: var(--spacing-xxs);
+                        min-height: 24px;
+                    "
+                >
+                    @if (selectedRowId() === row.id && isTagEditing()) {
+                        <app-tag-selector
+                            [tags]="tags()"
+                            [(ngModel)]="row.tags[0]"
+                            (update)="onUpdateTags($event)"
+                            (complete)="isTagEditing.set(false)"
+                        />
+                    } @else {
+                        <div (click)="onStartTagEdit(row)">{{ row.tags.join(', ') }}</div>
+                    }
+                </div>
             }
         </ng-template>
     </thf-grid>

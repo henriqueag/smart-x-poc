@@ -1,0 +1,15 @@
+:host {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+
+    ::ng-deep po-combo po-field-container-bottom {
+        display: none;
+    }
+
+    po-combo {
+        flex: 1;
+    }
+}

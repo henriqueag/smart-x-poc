@@ -1,0 +1,14 @@
+<po-combo
+    [p-filter-minlength]="3"
+    [p-filter-mode]="filterMode"
+    [p-filter-service]="service"
+    [p-field-label]="'label'"
+    [p-field-value]="'value'"
+    [p-debounce-time]="0"
+    [p-options]="tags()"
+    [formControl]="tag"
+    [p-disabled-init-filter]="true"
+    [p-disabled-tab-filter]="true"
+>
+</po-combo>
+<po-button-group [p-buttons]="buttons()"/>

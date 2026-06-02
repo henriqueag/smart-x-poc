@@ -1,6 +1,8 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, inject, Renderer2, signal, viewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, Renderer2, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
+    PoComboOption,
     PoDynamicFormField,
     PoModalAction,
     PoModalComponent,
@@ -11,10 +13,11 @@ import {
     PoPopupAction,
     PoPopupComponent
 } from '@po-ui/ng-components';
-import { ThfComponentsModule, ThfGridColumn, ThfGridColumnSort, ThfGridComponent, ThfTableAction } from '@totvs/thf-components';
+import { ThfComponentsModule, ThfGridColumn, ThfGridColumnSort, ThfGridComponent, ThfGridLiterals, ThfTableAction } from '@totvs/thf-components';
+import { debounceTime, distinctUntilChanged, filter, switchMap, tap } from 'rxjs';
+import { TagSelectorComponent } from '../tag-selector/tag-selector.component';
 import { ReportResource, ReportResourceListFilters, ReportResourceListQuery, ReportResourceType } from '../report-resource.model';
 import { ReportResourceService } from '../report-resource.service';
-import { debounceTime, distinctUntilChanged, filter, min, switchMap, tap } from 'rxjs';
 
 interface ReportGridItem extends ReportResource {
     ownerDisplayName: string;
@@ -25,10 +28,11 @@ interface ReportGridItem extends ReportResource {
 @Component({
     selector: 'app-list',
     imports: [
-        PoModule,
+        PoModule, //
         FormsModule,
         ReactiveFormsModule,
-        ThfComponentsModule
+        ThfComponentsModule,
+        TagSelectorComponent
     ],
     templateUrl: './list.component.html',
     styleUrl: './list.component.scss',
@@ -39,6 +43,7 @@ export class ListComponent implements AfterViewInit {
     private service = inject(ReportResourceService);
     private elRef = inject(ElementRef);
     private renderer = inject(Renderer2);
+    private destroyRef = inject(DestroyRef);
 
     // Estado base da tela
     gridItems = signal<ReportGridItem[]>([]);
@@ -65,7 +70,7 @@ export class ListComponent implements AfterViewInit {
             action: () => this.popup().toggle()
         },
         {
-            label: 'Recarregar',
+            label: 'Atualizar',
             action: () => this.loadPage(1, false)
         }
     ];
@@ -77,6 +82,28 @@ export class ListComponent implements AfterViewInit {
         { label: 'Tabela dinâmica', icon: 'an-fill an-crown', action: () => alert('Cadastro de tabela dinâmica') },
         { label: 'Visão de dados', icon: 'an-fill an-grid-four', action: () => alert('Cadastro de visão de dados') }
     ];
+
+    // #region Gestão de tags
+    selectedRowId = signal<string>(null);
+    isTagEditing = signal<boolean>(false);
+    tags = signal<PoComboOption[]>(this.service.tags.map(tag => ({ label: tag, value: tag })));
+
+    onStartTagEdit(row: ReportGridItem) {
+        if (!this.isTagEditing() && this.selectedRowId() === row.id) {
+            this.isTagEditing.set(true);
+        }
+    }
+
+    onFinishTagEdit() {
+        this.selectedRowId.set(null);
+        this.isTagEditing.set(false);
+    }
+
+    onUpdateTags(value: PoComboOption[]) {
+        this.tags.set(value);
+    }
+
+    // #endregion
 
     // #region Configuração da grid
     columns: ThfGridColumn[] = [
@@ -141,6 +168,12 @@ export class ListComponent implements AfterViewInit {
             width: 180
         },
         {
+            property: 'tags',
+            label: 'Marcação',
+            filter: false,
+            type: 'cellTemplate'
+        },
+        {
             property: 'isFavorite',
             label: 'Favorito',
             type: 'icon',
@@ -171,12 +204,6 @@ export class ListComponent implements AfterViewInit {
             filter: false,
             sortable: true,
             width: 140
-        },
-        {
-            property: 'tags',
-            label: 'Marcação',
-            filter: false,
-            type: 'cellTemplate'
         }
     ];
 
@@ -204,6 +231,13 @@ export class ListComponent implements AfterViewInit {
         { label: 'Duplicar', action: () => this.onBatchCustomAction('Duplicar') },
         { label: 'Compartilhar', action: () => this.onBatchCustomAction('Compartilhar') }
     ];
+
+    gridLiterals: ThfGridLiterals = {
+        noDataRowStateFilterActive: 'Nenhum recurso encontrado',
+        noDataRowStateFilterRemoved: 'Nenhum recurso encontrado',
+        moreActions: 'Outras ações'
+    };
+
     // #endregion
 
     // #region Estado do modal de filtro avançado
@@ -266,24 +300,29 @@ export class ListComponent implements AfterViewInit {
     constructor() {
         this.loadPage(1, false);
 
-        this.searchControl.valueChanges.pipe(
-            filter(val => val.length <= 0 || val.length >= 3),
-            distinctUntilChanged(),
-            debounceTime(300),
-            switchMap((value) => {
-                const query: ReportResourceListQuery = {
-                    page: 1,
-                    pageSize: this.currentPageSize(),
-                    displayName: value
-                };
-                return this.service.listResources(query).pipe(tap(result => {
-                    const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
-                    this.totalItems.set(result.total);
-                    this.currentPage.set(result.page);
-                    this.gridItems.set(mappedItems);
-                }));
-            })
-        ).subscribe()
+        this.searchControl.valueChanges
+            .pipe(
+                filter(val => val.length <= 0 || val.length >= 3),
+                distinctUntilChanged(),
+                debounceTime(300),
+                takeUntilDestroyed(this.destroyRef),
+                switchMap(value => {
+                    const query: ReportResourceListQuery = {
+                        page: 1,
+                        pageSize: this.currentPageSize(),
+                        displayName: value
+                    };
+                    return this.service.listResources(query).pipe(
+                        tap(result => {
+                            const mappedItems = result.items.map(item => this.mapResourceToGridItem(item));
+                            this.totalItems.set(result.total);
+                            this.currentPage.set(result.page);
+                            this.gridItems.set(mappedItems);
+                        })
+                    );
+                })
+            )
+            .subscribe();
     }
 
     // Ajustes pós-renderização da grid e do toolbar search
