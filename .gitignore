@@ -3,9 +3,6 @@
 # Visual Studio 20xx
 .vs
 
-# VsCode
-.vscode/
-
 # compiled output
 /dist
 /tmp
@@ -48,6 +45,10 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# Devextreme
-src/devextreme-license.ts
-.github/
+# Angular
+.angular
+
+# .NET
+*/obj
+*/bin
+*/wwwroot
