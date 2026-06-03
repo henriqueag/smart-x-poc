@@ -13,6 +13,23 @@ page=1&pageSize=15&sort.field=createdAt&sort.dir=desc&displayName=Resource&isFav
 ### Interface do DTO no Frontend
 
 ```typescript
+export interface ColumnFilter {
+    property: string;
+    logic: 'and | or';
+
+    /**
+     * {@link https://thf.totvs.app/v21/documentation/thf-grid|Interfaces > ThfFilterByColumn}
+     */
+    operator1: string;
+    value1?: any;
+
+    /**
+     * {@link https://thf.totvs.app/v21/documentation/thf-grid|Interfaces > ThfFilterByColumn}
+     */
+    operator2: string;
+    value2?: any;
+}
+
 export interface ReportResourceListQuery {
   page?: number;
   pageSize?: number;
@@ -27,8 +44,8 @@ export interface ReportResourceListQuery {
   isFavorite?: boolean;
   resourceTypes?: string[];
   tags?: string[];
+  columnFilter: ColumnFilter[];
 }
-
 ```
 
 ---
@@ -46,60 +63,63 @@ export interface UserGridLayoutPreference {
   options: ('draggable' | 'groupable')[]; // Estado do gerenciador (t-change-options-column-manager)
   sort: {
     field: string;
-    dir: 'asc' | 'desc';
+    direction: 'asc' | 'desc';
   }[];                                    // Ordenação da grid (t-change-sort-column)
+  columnFilter: ColumnFilter[];           // Array de filtros por coluna 
 }
-
 ```
-
 ---
+## 3. Backlog de Issues
 
-## 3. Backlog de Issues Atomizado (Pronto para Distribuição e QA)
+### [ISSUE 01] CORE - API GET Recursos: Implementar ordenação, paginação e filtro por DTO estruturado
 
-### [ISSUE 01] CORE - API GET Recursos
-
-* **Escopo:** Alterar o endpoint `GET /api/resources` para aceitar o novo DTO estruturado via QueryString (`sort.field`, `sort.dir`, paginação e filtros).
+* **Objetivo:** Alterar o endpoint `GET /api/resources` para aceitar o novo DTO estruturado via QueryString (ordenação (`sort.field`, `sort.direction`), paginação e filtros).
 * **Critério de Aceite (QA):** Validar se o retorno expõe o formato correto (`items` e `hasNext`) e responde aos filtros e ordenação passados de forma combinada.
+
+### [ISSUE 02] CORE - API GET Recursos: Filtrar apenas recursos cuja feature esteja ativa no sistema
+
+* **Objetivo** Alterar o endpoint `GET /api/resources` para fazer um pré-filtro verificando se a feature para cada tipo de recurso está habilitada.
 
 ### [ISSUE 02] CORE - API GET Preferências de Layout
 
-* **Escopo:** Criar o endpoint `GET /api/user-preferences/layout` para retornar o JSON de configuração da grid do usuário corrente.
+* **Objetivo:** Criar o endpoint `GET /api/user-preferences/layout` para retornar o JSON de configuração da grid do usuário corrente.
 * **Critério de Aceite (QA):** Validar o retorno HTTP `200` com o JSON ou `204 No Content` caso o usuário não possua preferências salvas.
 
 ### [ISSUE 03] CORE - API POST Preferências de Layout
 
-* **Escopo:** Criar o endpoint `POST /api/user-preferences/layout` para salvar de forma atômica o payload do layout da grid.
+* **Objetivo:** Criar o endpoint `POST /api/user-preferences/layout` para salvar de forma atômica o payload do layout da grid.
 * **Critério de Aceite (QA):** Validar se o payload enviado atualiza o registro ou insere um novo caso não exista (Upsert).
 
 ### [ISSUE 04] CORE - API GET Catálogo de Tags
 
-* **Escopo:** Criar o endpoint `GET /api/user-preferences/tags` para listar o catálogo global de tags disponíveis para o usuário.
+* **Objetivo:** Criar o endpoint `GET /api/user-preferences/tags` para listar o catálogo global de tags disponíveis para o usuário.
 
 ### [ISSUE 05] CORE - API POST Catálogo de Tags
 
-* **Escopo:** Criar o endpoint `POST /api/user-preferences/tags` para incluir/remover strings do catálogo de tags personalizadas.
+* **Objetivo:** Criar o endpoint `POST /api/user-preferences/tags` para incluir/remover strings do catálogo de tags personalizadas.
 
 ### [ISSUE 06] UI - Rota Base e Estrutura de Inclusão (+ Workaround Popup)
 
-* **Escopo:** Criar a rota `/_/resources/list` e o componente `ListComponent`. Configurar as `pageActions` do `po-page-default`.
+* **Objetivo:** Criar a rota `/_/resources/list` e o componente `ListComponent`. Configurar as `pageActions` do `po-page-default`.
 * **⚠️ Nota Técnica / Workaround Obrigatório:** O `po-page-default` não fornece acesso direto ao elemento nativo do seu botão primário para ser usado como target do `po-popup`.
 * **Implementação:** No `ngAfterViewInit`, o desenvolvedor deve capturar a referência usando `nativeElement.querySelector('.po-page-header-actions po-button[p-kind=primary]')` e atribuí-la ao sinal `pageButtonEl`.
 
+### [ISSUE 07] UI - Implementação da thf-grid
 
-
-### [ISSUE 07] UI - Implementação da thf-grid (+ Workaround Search Control)
-
-* **Escopo:** Adicionar o componente `thf-grid` na view mapeando colunas, ordenação padrão e os templates de célula (`po-tag`).
-* **⚠️ Nota Técnica / Workaround Obrigatório:**
-O `thf-grid` não expõe eventos reativos para ouvir digitação em tempo real no campo de busca de sua toolbar interna.
-* **Implementação:** No `ngAfterViewInit`, capturar o input padrão via seletor do Kendo, removê-lo do nó pai com `Renderer2` e injetar o `po-input` customizado vinculado ao `FormControl` reativo da aplicação.
-
-
+* **Objetivo:** Adicionar o componente `thf-grid` na view mapeando colunas, ordenação padrão e regras de negócio existentes.
 
 ### [ISSUE 08] UI - State Store de Preferências e Sincronização Silenciosa
 
-* **Escopo:** Criar o serviço de estado (Signals) que escuta os eventos de alteração da grid (`t-change-group`, `t-change-order-column`, etc.). Acoplar a lógica de persistência utilizando um operador de `debounceTime(1500)` para disparar a API POST (Issue 03) de forma silenciosa apenas quando o usuário cessar a interação.
+* **Objetivo:** Criar o serviço de estado (Signals) que escuta os eventos de alteração da grid (`t-change-group`, `t-change-order-column`, etc.). Acoplar a lógica de persistência utilizando um operador de `debounceTime(1500)` para disparar a API POST (Issue 03) de forma silenciosa apenas quando o usuário cessar a interação.
 
-### [ISSUE 09] UI - Filtros Avançados e Montagem do DTO
+### [ISSUE 09] UI - Filtros e Montagem do DTO
 
-* **Escopo:** Implementar o `po-modal` de filtro avançado. Ao disparar a ação primária, converter o estado dos campos (`accessType`, `description`, `favorite`, `types`, `tags`) no formato de propriedades do DTO da Issue 01 e realizar o reload da grid.
+* **Objetivo:** 
+  * Implementar o `po-modal` de filtro avançado. Ao disparar a ação primária, converter o estado dos campos (`accessType`, `description`, `favorite`, `types`, `tags`) no formato de propriedades do DTO da Issue 01 e realizar o reload da grid.
+  * Implementar filtro por campo de busca da tabela
+    * **Nota Técnica / Workaround Obrigatório:** O `thf-grid` não expõe eventos reativos para ouvir digitação em tempo real no campo de busca de sua toolbar interna.
+    * **Implementação:** No `ngAfterViewInit`, capturar o input padrão via seletor do Kendo, removê-lo do nó pai com `Renderer2` e injetar o `po-input` customizado vinculado ao `FormControl` reativo da aplicação.
+
+### [ISSUE 10] CORE - API Patch para vincular tag a um recurso
+
+* **Objetivo** Criar uma api que recebe uma tag e atribui ao recurso. Verificar associação por preferência de usuário ou por coluna na tabela Trf_Resources.
