@@ -27,6 +27,8 @@ export class CustomPoSearchComponent {
     private readonly destroyRef = inject(DestroyRef);
     private readonly themeSrv = inject(ThfThemeService);
 
+    readonly serviceUrl = 'http://localhost:3000/api/mockoon/objects/employees/schema/properties/options?type=lookup&id=1';
+
     openSearch() {
 
     }

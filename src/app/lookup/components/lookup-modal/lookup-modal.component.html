@@ -4,12 +4,17 @@
     [p-primary-action]="actions().primary"
     [p-secondary-action]="actions().secondary"
 >
-    <thf-lookup-data
-        name="lookupDataSingle"
-        [t-disabled]="true"
-        [t-field-label]="'srv.keyProperty'"
-        [t-field-value]="'srv.keyProperty'"
-        [t-multiple]="true"
-        [t-height]="450"
-    />
+    @if (this.lookupSrv.configured()) {
+        <thf-lookup-data
+            name="lookupDataSingle"
+            [t-filter-service]="lookupSrv"
+            [t-disabled]="lookupSrv.loading()"
+            [t-field-label]="lookupSrv.keyProperty()"
+            [t-field-value]="lookupSrv.keyProperty()"
+            [t-columns]="lookupSrv.columns()"
+            [t-multiple]="multiValue"
+            [t-height]="450"
+            (t-selected)="onSelected($event)"
+        />
+    }
 </po-modal>

@@ -14,7 +14,7 @@
     <po-number class="po-mb-2" p-label="MaxLength" [(ngModel)]="maxlength"></po-number>
 
     <form [formGroup]="formTest">
-        <lookup
+        <!-- <lookup
             formControlName="lookup1"
             label="Lookup Single String"
             [loading]="radioValue === 'loading'"
@@ -23,18 +23,19 @@
             [maxlength]="maxlength"
             [multiValue]="false"
             [type]="'string'"
-        />
+        /> -->
         <lookup
             formControlName="lookup2"
+            [type]="'string'"
             label="Lookup Multi String"
             [loading]="radioValue === 'loading'"
             [readonly]="radioValue === 'readonly'"
             [clean]="radioValue === 'clean'"
             [maxlength]="maxlength"
             [multiValue]="true"
-            [type]="'string'"
+            [serviceUrl]="serviceUrl"
         />
-        <lookup
+        <!-- <lookup
             formControlName="lookup3"
             label="Lookup Single Number"
             [loading]="radioValue === 'loading'"
@@ -53,7 +54,7 @@
             [maxlength]="maxlength"
             [multiValue]="true"
             [type]="'number'"
-        />
+        /> -->
     </form>
 
     <!-- <form [formGroup]="formMission">

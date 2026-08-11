@@ -76,9 +76,9 @@
                             [id]="inputId"
                             type="text"
                             class="thf-input po-input-icon-left thf-lookup-input-element"
-                            [class.po-input-icon-right]="loading() || shouldShowClearButton()"
+                            [class.po-input-icon-right]="isLoading() || shouldShowClearButton()"
                             [class.po-input-icon-left-aa]="isCompact()"
-                            [class.po-input-icon-right-aa]="isCompact() && (loading() || shouldShowClearButton())"
+                            [class.po-input-icon-right-aa]="isCompact() && (isLoading() || shouldShowClearButton())"
                             [class.po-lookup-input-disabled]="isDisabled()"
                             [class.thf-lookup-input-readonly]="readonly()"
                             [formControl]="inputValueControl"
@@ -97,7 +97,7 @@
                         [class.po-clickable]="!isDisabled()"
                         [class.thf-icon-not-allowed]="isDisabled()"
                     >
-                        @if (loading()) {
+                        @if (isLoading()) {
                             <po-loading-icon [p-size]="isCompact() ? 'xs' : 'sm'" />
                         } @else if (shouldShowClearButton()) {
                             <po-icon
@@ -129,4 +129,4 @@
     </div>
 </po-field-container>
 
-<lookup-modal #modal/>
+<lookup-modal #modal [serviceUrl]="serviceUrl()" [multiValue]="multiValue()"/>

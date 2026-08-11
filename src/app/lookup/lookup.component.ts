@@ -58,6 +58,7 @@ type LookupValue = LookupPrimitiveValue | LookupPrimitiveValue[] | null;
 export class LookupComponent implements ControlValueAccessor {
     private readonly destroyRef = inject(DestroyRef);
     private readonly hostElement = inject(ElementRef<HTMLElement>);
+    private readonly lookupSrv = inject(LookupService);
 
     readonly label = input<string | null>();
     readonly type = input<LookupValueType>('string');
@@ -67,7 +68,7 @@ export class LookupComponent implements ControlValueAccessor {
     readonly readonly = input(false);
     readonly clean = input(false);
     readonly multiValue = input(false);
-    readonly url = input<string>();
+    readonly serviceUrl = input<string>();
 
     readonly inputValueControl = new FormControl('', { nonNullable: true });
     readonly disclaimerContainerElement = viewChild<ElementRef<HTMLDivElement>>('disclaimerContainer');
@@ -82,7 +83,8 @@ export class LookupComponent implements ControlValueAccessor {
     readonly hasInputValue = signal(false);
     readonly isFormDisabled = signal(false);
 
-    readonly isDisabled = computed(() => this.disabled() || this.loading() || this.isFormDisabled());
+    readonly isLoading = computed(() => this.loading() || this.lookupSrv.loading());
+    readonly isDisabled = computed(() => this.disabled() || this.isLoading() || this.isFormDisabled());
     readonly isInteractive = computed(() => !this.isDisabled() && !this.readonly());
     readonly isCompact = computed(() => this.size() === 'small');
     readonly hasValue = computed(() => this.multiValue() ? this.disclaimers().length > 0 : this.hasInputValue());
@@ -105,6 +107,11 @@ export class LookupComponent implements ControlValueAccessor {
         this.initializeAccessibilityObserver();
         this.scheduleDisclaimerVisibilityCalculation();
         this.destroyRef.onDestroy(() => this.disconnectObservers());
+
+        effect(() => {
+            const selectedItems: LookupValue = this.lookupSrv.selectedItems();
+            this.writeValue(selectedItems);
+        })
     }
 
     writeValue(value: LookupValue): void {
