@@ -1,4 +1,6 @@
-<po-field-container p-label="Teste" [p-disabled]="isDisabled()" [p-size]="size()">
+<thf-lookup hidden t-field-label="hidden" aria-hidden="true" tabindex="-1" />
+
+<po-field-container [p-label]="label()" [p-disabled]="isDisabled()" [p-size]="size()">
     <div cdkoverlayorigin class="po-field-container-content" [attr.p-size]="size()">
         <div class="thf-lookup-input">
             <div class="po-field-container-content-helper-wrapper">
@@ -6,7 +8,7 @@
                     class="po-field-container-input"
                     [style.cursor]="isDisabled() ? 'not-allowed' : 'unset'"
                 >
-                    @if (this.multiValue()) {
+                    @if (multiValue()) {
                         <div
                             class="thf-input po-input-icon-left po-lookup-input po-icon-input thf-lookup-input-element"
                             [class.thf-input-aa]="isCompact()"
@@ -54,14 +56,17 @@
                                     type="text"
                                     class="input-lookup-static"
                                     [class.po-lookup-input-disabled]="isDisabled()"
-                                    [attr.disabled]="isDisabled() ? 'true' : null"
-                                    [attr.readOnly]="readonly() ? 'true' : null"
-                                    [attr.maxLength]="maxlength()"
-                                    [attr.inputMode]="type() === 'number' ? 'numeric' : 'text'"
+                                    [formControl]="inputValueControl"
+                                    [attr.readonly]="readonly() ? '' : null"
+                                    [attr.maxlength]="maxlength()"
+                                    [attr.inputmode]="type() === 'number' ? 'numeric' : 'text'"
                                     [attr.pattern]="type() === 'number' ? '[0-9]*' : null"
                                     autocomplete="off"
                                     (keydown)="onInputKeydown($event)"
                                     (input)="onInput($event)"
+                                    (focus)="expandDisclaimers()"
+                                    (focusout)="collapseDisclaimers()"
+                                    (blur)="onInputBlur()"
                                 >
                             </div>
                         </div>
@@ -71,18 +76,19 @@
                             [id]="inputId"
                             type="text"
                             class="thf-input po-input-icon-left thf-lookup-input-element"
-                            [class.po-input-icon-right]="shouldShowClearButton()"
+                            [class.po-input-icon-right]="loading() || shouldShowClearButton()"
                             [class.po-input-icon-left-aa]="isCompact()"
-                            [class.po-input-icon-right-aa]="isCompact() && shouldShowClearButton()"
-                            [attr.disabled]="isDisabled() ? 'true' : null"
-                            [attr.readOnly]="readonly() ? 'true' : null"
-                            [attr.maxLength]="maxlength()"
-                            [attr.inputMode]="type() === 'number' ? 'numeric' : 'text'"
+                            [class.po-input-icon-right-aa]="isCompact() && (loading() || shouldShowClearButton())"
+                            [class.po-lookup-input-disabled]="isDisabled()"
+                            [class.thf-lookup-input-readonly]="readonly()"
+                            [formControl]="inputValueControl"
+                            [attr.readonly]="readonly() ? '' : null"
+                            [attr.maxlength]="maxlength()"
+                            [attr.inputmode]="type() === 'number' ? 'numeric' : 'text'"
                             [attr.pattern]="type() === 'number' ? '[0-9]*' : null"
                             autocomplete="off"
-                            [(ngModel)]="value"
-                            (keydown)="onInputKeydown($event)"
                             (input)="onInput($event)"
+                            (blur)="onInputBlur()"
                         >
                     }
 
@@ -99,7 +105,7 @@
                                 class="thf-field-icon po-icon-input"
                                 [class.thf-field-icon-aa]="isCompact()"
                                 tabindex="0"
-                                (click)="clearDisclaimers()"
+                                (click)="clearValue()"
                             />
                         }
                     </div>
@@ -114,6 +120,7 @@
                             [class.po-icon-input]="!isDisabled()"
                             [class.po-field-icon-aa]="isCompact()"
                             [class.po-field-icon-disabled]="isDisabled()"
+                            (click)="modal.open()"
                         />
                     </div>
                 </div>
@@ -121,3 +128,5 @@
         </div>
     </div>
 </po-field-container>
+
+<lookup-modal #modal/>

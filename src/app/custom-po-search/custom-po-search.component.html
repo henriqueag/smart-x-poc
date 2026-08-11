@@ -1,29 +1,62 @@
-<div style="width: 300px">
-    <po-button
-        class="po-mb-2 po-mr-1"
-        p-label="Modificar"
-        (p-click)="onModify()"
-    />
-
-    <po-radio-group [(ngModel)]="radioValue" [p-options]="radioOptions"></po-radio-group>
-
+<div class="left">
     <po-button
         class="po-mb-2"
         p-label="Trocar tema"
         (p-click)="toogleTheme()"
     />
 
-    <lookup
-        [loading]="radioValue === 'loading'"
-        [disabled]="radioValue === 'disabled'"
-        [readonly]="radioValue === 'readonly'"
-        [clean]="radioValue === 'clean'"
-        [maxlength]="undefined"
-        [multiValue]="false"
-        [type]="'string'"
-    />
+    <po-radio-group
+        [(ngModel)]="radioValue"
+        [p-options]="radioOptions"
+        (ngModelChange)="onRadioChange($event)"
+    ></po-radio-group>
 
-    <form [formGroup]="formMission">
+    <po-number class="po-mb-2" p-label="MaxLength" [(ngModel)]="maxlength"></po-number>
+
+    <form [formGroup]="formTest">
+        <lookup
+            formControlName="lookup1"
+            label="Lookup Single String"
+            [loading]="radioValue === 'loading'"
+            [readonly]="radioValue === 'readonly'"
+            [clean]="radioValue === 'clean'"
+            [maxlength]="maxlength"
+            [multiValue]="false"
+            [type]="'string'"
+        />
+        <lookup
+            formControlName="lookup2"
+            label="Lookup Multi String"
+            [loading]="radioValue === 'loading'"
+            [readonly]="radioValue === 'readonly'"
+            [clean]="radioValue === 'clean'"
+            [maxlength]="maxlength"
+            [multiValue]="true"
+            [type]="'string'"
+        />
+        <lookup
+            formControlName="lookup3"
+            label="Lookup Single Number"
+            [loading]="radioValue === 'loading'"
+            [readonly]="radioValue === 'readonly'"
+            [clean]="radioValue === 'clean'"
+            [maxlength]="maxlength"
+            [multiValue]="false"
+            [type]="'number'"
+        />
+        <lookup
+            formControlName="lookup4"
+            label="Lookup Multi Number"
+            [loading]="radioValue === 'loading'"
+            [readonly]="radioValue === 'readonly'"
+            [clean]="radioValue === 'clean'"
+            [maxlength]="maxlength"
+            [multiValue]="true"
+            [type]="'number'"
+        />
+    </form>
+
+    <!-- <form [formGroup]="formMission">
         <thf-lookup
             formControlName="lookup2"
             name="lookupMultiple"
@@ -42,5 +75,10 @@
             [t-clean]="true"
             [t-filter-search-select]="filterSelect"
         ></thf-lookup>
-    </form>
+    </form> -->
 </div>
+
+<div class="right">
+    <pre>{{formTest.getRawValue() | json}}</pre>
+</div>
+

@@ -1,8 +1,15 @@
 :host {
-    display: block;
-    height: calc(100vh - 44px);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-bottom: 300px;
+    height: calc(100vh - 44px);
+    padding-block: 80px;
+    padding-inline: 120px;
+}
+
+.left {
+    width: 20%;
+    padding-right: 1rem;
+}
+.right {
+    width: 60%;
+    padding-left: 1rem;
 }

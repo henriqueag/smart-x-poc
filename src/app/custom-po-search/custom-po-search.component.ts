@@ -1,10 +1,9 @@
-import { Component, DestroyRef, inject, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { JsonPipe } from '@angular/common';
+import { Component, DestroyRef, inject } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { PoButtonModule, PoDisclaimer, PoDisclaimerModule, PoFieldContainerModule, PoFieldModule, PoIconModule, PoInputComponent, PoRadioGroupOption, PoThemeA11yEnum } from '@po-ui/ng-components';
+import { PoButtonModule, PoDisclaimerModule, PoFieldContainerModule, PoFieldModule, PoIconModule, PoRadioGroupOption, PoThemeA11yEnum } from '@po-ui/ng-components';
 import { ThfThemeService } from '@totvs/themes';
 import { ThfComponentsModule, ThfLookupGridProperties } from '@totvs/thf-components';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { LookupComponent } from '../lookup/lookup.component';
 
 @Component({
@@ -20,36 +19,32 @@ import { LookupComponent } from '../lookup/lookup.component';
         ReactiveFormsModule,
         FormsModule,
         LookupComponent,
-        ThfComponentsModule
+        ThfComponentsModule,
+        JsonPipe
     ]
 })
 export class CustomPoSearchComponent {
     private readonly destroyRef = inject(DestroyRef);
     private readonly themeSrv = inject(ThfThemeService);
 
-    control = new FormControl('Teste');
-
-    input = viewChild(PoInputComponent);
-
-    loading = false;
-
-    constructor() {
-        this.control.valueChanges.pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(value => {
-            console.log(value);
-        });
-    }
-
-    onModify() {
-        this.loading = !this.loading;
-    }
-
     openSearch() {
 
     }
 
-    clear() {
-        console.log('clear');
+    onRadioChange(value: string) {
+        if (value === 'disabled') {
+            this.formTest.disable();
+        } else {
+            this.formTest.enable();
+        }
     }
+
+    formTest = new FormGroup({
+        lookup1: new FormControl('fjkljslfkjsklfjsldkjfklsdjfkljsddlfjsdlkjfklioweujrioweuqio'),
+        lookup2: new FormControl(['Disclaimer 1', 'Disclaimer 2', 'Disclaimer 3', 'Disclaimer 4', 'Disclaimer 5']),
+        lookup3: new FormControl(null),
+        lookup4: new FormControl([1, 2, 3, 4, 5, 6])
+    })
 
     formMission = new FormGroup({
         lookup2: new FormControl(['1495831666871'])
@@ -83,7 +78,6 @@ export class CustomPoSearchComponent {
     ];
 
     a11y = PoThemeA11yEnum.AAA;
-
     radioValue: string;
     radioOptions: PoRadioGroupOption[] = [
         { label: 'None', value: 'none' },
@@ -92,6 +86,7 @@ export class CustomPoSearchComponent {
         { label: 'Disabled', value: 'disabled' },
         { label: 'Clean', value: 'clean' },
     ]
+    maxlength = undefined;
 
     toogleTheme() {
         this.a11y = this.a11y === PoThemeA11yEnum.AAA ? PoThemeA11yEnum.AA : PoThemeA11yEnum.AAA;

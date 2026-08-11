@@ -1,0 +1,15 @@
+<po-modal
+    p-title="Selecione um registro"
+    p-size="lg"
+    [p-primary-action]="actions().primary"
+    [p-secondary-action]="actions().secondary"
+>
+    <thf-lookup-data
+        name="lookupDataSingle"
+        [t-disabled]="true"
+        [t-field-label]="'srv.keyProperty'"
+        [t-field-value]="'srv.keyProperty'"
+        [t-multiple]="true"
+        [t-height]="450"
+    />
+</po-modal>
