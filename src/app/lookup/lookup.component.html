@@ -8,13 +8,13 @@
                 >
                     <div
                         class="thf-input po-input-icon-left po-lookup-input po-icon-input thf-lookup-input-element"
-                        [class.thf-input-aa]="size() === 'small'"
-                        [class.po-lookup-input-static]="!expanded()"
-                        [class.po-lookup-input-auto]="expanded()"
-                        [class.po-lookup-input-static-aa]="!expanded() && size() === 'small'"
-                        [class.po-lookup-input-auto-aa]="expanded() && size() === 'small'"
-                        [class.po-input-icon-left-aa]="size() === 'small'"
-                        [class.po-lookup-input-aa]="size() === 'small'"
+                        [class.thf-input-aa]="isCompact()"
+                        [class.po-lookup-input-static]="!isExpanded()"
+                        [class.po-lookup-input-auto]="isExpanded()"
+                        [class.po-lookup-input-static-aa]="!isExpanded() && isCompact()"
+                        [class.po-lookup-input-auto-aa]="isExpanded() && isCompact()"
+                        [class.po-input-icon-left-aa]="isCompact()"
+                        [class.po-lookup-input-aa]="isCompact()"
                         [class.po-lookup-input-disabled]="isDisabled()"
                         [class.thf-lookup-input-readonly]="readonly()"
                         tabindex="0"
@@ -26,36 +26,39 @@
                                     <po-disclaimer
                                         class="po-lookup-input-disclaimer thf-lookup-disclaimer"
                                         [p-value]="disclaimer.value"
-                                        [p-hide-close]="isDisabled() || readonly()"
+                                        [p-hide-close]="!isInteractive()"
                                         (p-close-action)="removeDisclaimer(disclaimer)"
                                     />
                                 </div>
                             }
-                            @if (!expanded() && hiddenCount() > 0) {
+
+                            @if (!isExpanded() && hiddenDisclaimerCount() > 0) {
                                 <div
                                     class="po-lookup-input-disclaimer-item"
-                                    [class.po-clickable]="!isDisabled() && !readonly() && !loading()"
-                                    (click)="expand()"
+                                    [class.po-clickable]="isInteractive()"
+                                    (click)="expandDisclaimers()"
                                 >
                                     <po-disclaimer
                                         class="po-lookup-input-disclaimer thf-lookup-disclaimer"
-                                        [p-value]="'+' + hiddenCount()"
+                                        [p-value]="'+' + hiddenDisclaimerCount()"
                                         [p-hide-close]="true"
                                     />
                                 </div>
                             }
+
                             <input
-                                #inputEl
-                                [id]="id"
+                                #inputElement
+                                [id]="inputId"
                                 name="input-static"
                                 type="text"
                                 class="input-lookup-static"
                                 [class.po-lookup-input-disabled]="isDisabled()"
+                                [disabled]="isDisabled()"
+                                [readOnly]="readonly()"
+                                [maxLength]="maxlength()"
+                                [inputMode]="type() === 'number' ? 'numeric' : 'text'"
+                                [pattern]="type() === 'number' ? '[0-9]*' : null"
                                 autocomplete="off"
-                                [attr.readonly]="readonly() ? true : undefined"
-                                [attr.maxlength]="maxlength()"
-                                [attr.inputmode]="type() === 'number' ? 'number' : 'text'"
-                                [attr.pattern]="type() === 'number' ? '[0-9]*' : undefined"
                                 (keydown)="onInputKeydown($event)"
                                 (input)="onInput($event)"
                             >
@@ -64,33 +67,32 @@
 
                     <div
                         class="po-field-icon-container-right"
-                        [class.po-field-icon-container-right-aa]="size() === 'small'"
+                        [class.po-field-icon-container-right-aa]="isCompact()"
                         [class.po-clickable]="!isDisabled()"
                         [class.thf-icon-not-allowed]="isDisabled()"
                     >
                         @if (loading()) {
-                            <po-loading-icon [p-size]="size() === 'small' ? 'xs' : 'sm'"/>
-                        }
-
-                        @if (!loading() && clean() && !isDisabled() && !readonly()) {
+                            <po-loading-icon [p-size]="isCompact() ? 'xs' : 'sm'" />
+                        } @else if (shouldShowClearButton()) {
                             <po-icon
                                 p-icon="ICON_CLEAR_CONTENT"
                                 class="thf-field-icon po-icon-input"
-                                [class.thf-field-icon-aa]="size() === 'small'"
+                                [class.thf-field-icon-aa]="isCompact()"
                                 tabindex="0"
                                 (click)="clearDisclaimers()"
                             />
                         }
                     </div>
+
                     <div
                         class="po-field-icon-container-left"
-                        [style.pointer-events]="isDisabled() || readonly() ? 'none' : 'all'"
+                        [style.pointer-events]="isInteractive() ? 'all' : 'none'"
                     >
                         <po-icon
                             p-icon="ICON_SEARCH"
                             class="po-field-icon"
                             [class.po-icon-input]="!isDisabled()"
-                            [class.po-field-icon-aa]="size() === 'small'"
+                            [class.po-field-icon-aa]="isCompact()"
                             [class.po-field-icon-disabled]="isDisabled()"
                         />
                     </div>

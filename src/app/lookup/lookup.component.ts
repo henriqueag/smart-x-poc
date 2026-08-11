@@ -2,141 +2,97 @@ import {
     Component,
     DestroyRef,
     ElementRef,
-    HostListener,
     computed,
     effect,
-    forwardRef,
     inject,
     input,
     signal,
-    untracked,
     viewChild,
     viewChildren
 } from '@angular/core';
-import { NG_VALUE_ACCESSOR } from '@angular/forms';
 import { PoDisclaimer, PoDisclaimerModule, PoFieldContainerModule, PoIconModule, PoLoadingModule } from '@po-ui/ng-components';
 
 const A11Y_ATTRIBUTE = 'data-a11y';
+const LOOKUP_ID_PREFIX = 'lookup';
+const INPUT_RESERVED_WIDTH = 44;
+const DISCLAIMER_GAP = 4;
 
-export const VALUE_ACCESSOR: any = {
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => LookupComponent),
-    multi: true
-};
+let nextLookupId = 0;
+
+type LookupSize = 'small' | 'medium';
+type LookupValueType = 'string' | 'number';
 
 @Component({
     selector: 'lookup',
     templateUrl: './lookup.component.html',
     styleUrls: ['./lookup.component.scss'],
-    providers: [VALUE_ACCESSOR],
-    imports: [
-        PoFieldContainerModule, //
-        PoDisclaimerModule,
-        PoIconModule,
-        PoLoadingModule
-    ],
+    imports: [PoFieldContainerModule, PoDisclaimerModule, PoIconModule, PoLoadingModule],
     host: {
         '[attr.t-disabled]': 'isDisabled()',
-        '[attr.t-size]': 'size()'
+        '[attr.t-size]': 'size()',
+        '(document:click)': 'onDocumentClick($event)'
     }
 })
 export class LookupComponent {
-    private destroyRef = inject(DestroyRef);
-    private hostEl = inject(ElementRef<HTMLElement>);
+    private readonly destroyRef = inject(DestroyRef);
+    private readonly hostElement = inject(ElementRef<HTMLElement>);
 
-    type = input<'string' | 'number'>('string');
-    maxlength = input<number | undefined>();
-    loading = input<boolean>();
-    disabled = input<boolean>();
-    readonly = input<boolean>();
-    clean = input<boolean>();
+    readonly type = input<LookupValueType>('string');
+    readonly maxlength = input<number>();
+    readonly loading = input(false);
+    readonly disabled = input(false);
+    readonly readonly = input(false);
+    readonly clean = input(false);
 
-    readonly disclaimerContainerEl = viewChild<ElementRef<HTMLDivElement>>('disclaimerContainer');
-    readonly inputEl = viewChild<ElementRef<HTMLInputElement>>('inputEl');
-    readonly disclaimerItems = viewChildren<ElementRef<HTMLDivElement>>('disclaimerItem');
+    readonly disclaimerContainerElement = viewChild<ElementRef<HTMLDivElement>>('disclaimerContainer');
+    readonly inputElement = viewChild<ElementRef<HTMLInputElement>>('inputElement');
+    readonly disclaimerItemElements = viewChildren<ElementRef<HTMLDivElement>>('disclaimerItem');
 
-    isDisabled = computed(() => this.disabled() || this.loading());
+    readonly inputId = `${LOOKUP_ID_PREFIX}-${nextLookupId++}`;
+    readonly disclaimers = signal<PoDisclaimer[]>([{ value: 'Disclaimer 1' }, { value: 'Disclaimer 2' }]);
+    readonly isExpanded = signal(false);
+    readonly size = signal<LookupSize>('small');
+    readonly visibleDisclaimerCount = signal(this.disclaimers().length);
 
-    id = `lookup[08c297ee-6c5a-4356-88fb-59759d0dcc90]`;
+    readonly isDisabled = computed(() => this.disabled() || this.loading());
+    readonly isInteractive = computed(() => !this.isDisabled() && !this.readonly());
+    readonly isCompact = computed(() => this.size() === 'small');
+    readonly shouldShowClearButton = computed(() => this.clean() && this.isInteractive());
+    readonly visibleDisclaimers = computed(() => this.disclaimers().slice(0, this.visibleDisclaimerCount()));
+    readonly hiddenDisclaimerCount = computed(() => this.disclaimers().length - this.visibleDisclaimerCount());
 
-    expanded = signal(false);
-    size = signal('small');
-
-    disclaimers = signal<PoDisclaimer[]>([{ value: 'Disclaimer 1' }, { value: 'Disclaimer 2' }]);
-
-    // quantidade de disclaimers que cabem na largura atual do container
-    visibleCount = signal(this.disclaimers().length);
-
-    visibleDisclaimers = computed(() => this.disclaimers().slice(0, this.visibleCount()));
-    hiddenCount = computed(() => this.disclaimers().length - this.visibleCount());
-
-    private resizeObserver: ResizeObserver;
-    private mutationObserver: MutationObserver;
+    private resizeObserver?: ResizeObserver;
+    private accessibilityObserver?: MutationObserver;
+    private observedContainerWidth?: number;
 
     constructor() {
-        effect(() => {
-            const disclaimerContainerEl = this.disclaimerContainerEl();
-
-            if (!!disclaimerContainerEl && !this.resizeObserver) {
-                this.resizeObserver = new ResizeObserver(() => this.refreshVisibility());
-                this.resizeObserver.observe(disclaimerContainerEl.nativeElement);
-            }
-        });
-
-        effect(() => {
-            // 1. Lemos o Signal das viewChildren. Toda vez que os elementos mudarem no DOM,
-            // a nova lista será notificada e este efeito irá reexecutar.
-            this.disclaimerItems();
-
-            // 2. Usamos untracked para ler o status de expanded sem fazer o efeito rodar
-            // quando apenas o expanded mudar (mantendo o comportamento exato da sua inscrição anterior).
-            const isExpanded = untracked(() => this.expanded());
-
-            if (!isExpanded) {
-                requestAnimationFrame(() => this.calculateVisibleDisclaimers());
-            }
-        });
-
-        const element = document.documentElement;
-        this.size.set(this.calculateSize(element));
-        this.mutationObserver = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'attributes' && mutation.attributeName === A11Y_ATTRIBUTE) {
-                    this.size.set(this.calculateSize(element));
-                }
-            }
-        });
-
-        // O atributo 'attributeFilter' garante que o observer SÓ dispare para o 'data-a11y',
-        // ignorando outras mudanças de classes ou atributos no <html> (foco total em performance).
-        this.mutationObserver.observe(element, {
-            attributes: true,
-            attributeFilter: [A11Y_ATTRIBUTE]
-        });
-
-        this.destroyRef.onDestroy(() => {
-            this.resizeObserver?.disconnect();
-            this.mutationObserver?.disconnect();
-        });
+        this.initializeDisclaimerResizeObserver();
+        this.initializeAccessibilityObserver();
+        this.scheduleDisclaimerVisibilityCalculation();
+        this.destroyRef.onDestroy(() => this.disconnectObservers());
     }
 
-    // ação de clique no último item visível (indicador "+N") para expandir todos os disclaimers
-    expand(): void {
-        if (!this.isDisabled() && !this.readonly() && !this.loading()) {
-            this.expanded.set(true);
+    focusInput(): void {
+        if (!this.isDisabled()) {
+            this.inputElement().nativeElement.focus();
         }
     }
 
-    // clicar em qualquer área do container leva o foco para o input de digitação
-    focusInput(): void {
-        this.inputEl().nativeElement.focus();
+    expandDisclaimers(): void {
+        if (!this.isInteractive()) {
+            return;
+        }
+
+        this.isExpanded.set(true);
+        this.visibleDisclaimerCount.set(this.disclaimers().length);
     }
 
-    // Enter/Tab insere o texto digitado como um novo disclaimer
     onInputKeydown(event: KeyboardEvent): void {
-        if (event.key !== 'Enter' && event.key !== 'Tab') return;
+        if (!this.isInteractive() || !this.isSubmitKey(event.key)) {
+            return;
+        }
 
-        const input = this.inputEl().nativeElement;
+        const input = event.target as HTMLInputElement;
         const value = input.value.trim();
 
         if (!value) return;
@@ -147,90 +103,138 @@ export class LookupComponent {
 
         this.disclaimers.update(disclaimers => [...disclaimers, { value }]);
         input.value = '';
-        this.refreshVisibility();
+        this.scheduleDisclaimerVisibilityCalculation();
     }
 
-    onInput(event: InputEvent) {
+    onInput(event: Event): void {
+        if (this.type() !== 'number') {
+            return;
+        }
+
         const input = event.target as HTMLInputElement;
-        input.value = input.value.replace(/^\D*$/gm, '');
+        input.value = input.value.replace(/\D/g, '');
     }
 
     removeDisclaimer(disclaimer: PoDisclaimer): void {
         this.disclaimers.update(disclaimers => disclaimers.filter(item => item !== disclaimer));
-        this.refreshVisibility();
+        this.scheduleDisclaimerVisibilityCalculation();
     }
 
     clearDisclaimers(): void {
         this.disclaimers.set([]);
-        this.inputEl().nativeElement.value = '';
-        this.refreshVisibility();
+
+        const input = this.inputElement()?.nativeElement;
+        if (input) {
+            input.value = '';
+        }
+
+        this.scheduleDisclaimerVisibilityCalculation();
         this.focusInput();
     }
 
-    // clique fora do componente recolhe os disclaimers novamente (mais confiável que focusout,
-    // pois elementos não focáveis, como o ícone de fechar do disclaimer, não disparam relatedTarget)
-    @HostListener('document:click', ['$event'])
-    onClickOutside(event: MouseEvent): void {
-        if (!this.expanded()) return;
-
-        const isInside = event.composedPath().includes(this.hostEl.nativeElement);
-
-        if (!isInside) {
-            this.collapse();
+    onDocumentClick(event: MouseEvent): void {
+        if (this.isExpanded() && !event.composedPath().includes(this.hostElement.nativeElement)) {
+            this.collapseDisclaimers();
         }
     }
 
-    private collapse(): void {
-        if (!this.expanded()) return;
+    private initializeDisclaimerResizeObserver(): void {
+        effect(() => {
+            const container = this.disclaimerContainerElement();
 
-        this.expanded.set(false);
-        requestAnimationFrame(() => this.calculateVisibleDisclaimers());
+            if (container && !this.resizeObserver) {
+                this.resizeObserver = new ResizeObserver(([entry]) => {
+                    const containerWidth = entry.contentRect.width;
+
+                    if (containerWidth === this.observedContainerWidth) {
+                        return;
+                    }
+
+                    this.observedContainerWidth = containerWidth;
+                    this.scheduleDisclaimerVisibilityCalculation();
+                });
+                this.resizeObserver.observe(container.nativeElement);
+            }
+        });
     }
 
-    // reseta a contagem visível para o total e recalcula o overflow no próximo frame
-    private refreshVisibility(): void {
-        this.visibleCount.set(this.disclaimers().length);
+    private initializeAccessibilityObserver(): void {
+        const documentElement = document.documentElement;
+        this.size.set(this.getSize(documentElement));
+
+        this.accessibilityObserver = new MutationObserver(() => {
+            this.size.set(this.getSize(documentElement));
+        });
+        this.accessibilityObserver.observe(documentElement, {
+            attributes: true,
+            attributeFilter: [A11Y_ATTRIBUTE]
+        });
+    }
+
+    private disconnectObservers(): void {
+        this.resizeObserver?.disconnect();
+        this.accessibilityObserver?.disconnect();
+    }
+
+    private collapseDisclaimers(): void {
+        this.isExpanded.set(false);
+        this.scheduleDisclaimerVisibilityCalculation();
+    }
+
+    private scheduleDisclaimerVisibilityCalculation(): void {
+        this.visibleDisclaimerCount.set(this.disclaimers().length);
         requestAnimationFrame(() => this.calculateVisibleDisclaimers());
     }
 
     private calculateVisibleDisclaimers(): void {
-        const disclaimerItems = this.disclaimerItems();
-
-        if (!disclaimerItems?.length) return;
-
         const disclaimers = this.disclaimers();
 
         if (!disclaimers.length) {
-            this.visibleCount.set(0);
+            this.visibleDisclaimerCount.set(0);
             return;
         }
 
-        if (this.expanded()) {
-            this.visibleCount.set(disclaimers.length);
+        if (this.isExpanded()) {
+            this.visibleDisclaimerCount.set(disclaimers.length);
             return;
         }
 
-        // reserva espaço para o indicador "+N" e para o input de digitação
-        const containerWidth = this.disclaimerContainerEl().nativeElement.clientWidth - 44;
-
-        let totalWidth = 0;
-        let visible = 0;
-
-        for (const itemRef of disclaimerItems) {
-            const el = itemRef.nativeElement;
-            totalWidth += el.offsetWidth + 4;
-
-            if (totalWidth <= containerWidth) {
-                visible++;
-            } else {
-                break;
-            }
+        const container = this.disclaimerContainerElement();
+        const disclaimerItems = this.disclaimerItemElements();
+        if (!container || !disclaimerItems.length) {
+            return;
         }
 
-        this.visibleCount.set(visible === disclaimers.length ? visible : Math.max(1, visible));
+        const availableWidth = container.nativeElement.clientWidth - INPUT_RESERVED_WIDTH;
+        const visibleCount = this.getVisibleDisclaimerCount(disclaimerItems, availableWidth);
+
+        this.visibleDisclaimerCount.set(
+            visibleCount === disclaimers.length ? visibleCount : Math.max(1, visibleCount)
+        );
     }
 
-    private calculateSize(element: HTMLElement): 'small' | 'medium' {
+    private getVisibleDisclaimerCount(items: readonly ElementRef<HTMLDivElement>[], availableWidth: number): number {
+        let occupiedWidth = 0;
+        let visibleCount = 0;
+
+        for (const item of items) {
+            occupiedWidth += item.nativeElement.offsetWidth + DISCLAIMER_GAP;
+
+            if (occupiedWidth > availableWidth) {
+                break;
+            }
+
+            visibleCount++;
+        }
+
+        return visibleCount;
+    }
+
+    private isSubmitKey(key: string): boolean {
+        return key === 'Enter' || key === 'Tab';
+    }
+
+    private getSize(element: HTMLElement): LookupSize {
         return element.getAttribute(A11Y_ATTRIBUTE) === 'AAA' ? 'medium' : 'small';
     }
 }
