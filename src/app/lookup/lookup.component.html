@@ -1,0 +1,101 @@
+<po-field-container p-label="Teste" [p-disabled]="isDisabled()" [p-size]="size()">
+    <div cdkoverlayorigin class="po-field-container-content" [attr.p-size]="size()">
+        <div class="thf-lookup-input">
+            <div class="po-field-container-content-helper-wrapper">
+                <div
+                    class="po-field-container-input"
+                    [style.cursor]="isDisabled() ? 'not-allowed' : 'unset'"
+                >
+                    <div
+                        class="thf-input po-input-icon-left po-lookup-input po-icon-input thf-lookup-input-element"
+                        [class.thf-input-aa]="size() === 'small'"
+                        [class.po-lookup-input-static]="!expanded()"
+                        [class.po-lookup-input-auto]="expanded()"
+                        [class.po-lookup-input-static-aa]="!expanded() && size() === 'small'"
+                        [class.po-lookup-input-auto-aa]="expanded() && size() === 'small'"
+                        [class.po-input-icon-left-aa]="size() === 'small'"
+                        [class.po-lookup-input-aa]="size() === 'small'"
+                        [class.po-lookup-input-disabled]="isDisabled()"
+                        [class.thf-lookup-input-readonly]="readonly()"
+                        tabindex="0"
+                        (click)="focusInput()"
+                    >
+                        <div class="container-static-lookup" #disclaimerContainer>
+                            @for (disclaimer of visibleDisclaimers(); track disclaimer.value) {
+                                <div #disclaimerItem class="po-lookup-input-disclaimer-item">
+                                    <po-disclaimer
+                                        class="po-lookup-input-disclaimer thf-lookup-disclaimer"
+                                        [p-value]="disclaimer.value"
+                                        [p-hide-close]="isDisabled() || readonly()"
+                                        (p-close-action)="removeDisclaimer(disclaimer)"
+                                    />
+                                </div>
+                            }
+                            @if (!expanded() && hiddenCount() > 0) {
+                                <div
+                                    class="po-lookup-input-disclaimer-item"
+                                    [class.po-clickable]="!isDisabled() && !readonly() && !loading()"
+                                    (click)="expand()"
+                                >
+                                    <po-disclaimer
+                                        class="po-lookup-input-disclaimer thf-lookup-disclaimer"
+                                        [p-value]="'+' + hiddenCount()"
+                                        [p-hide-close]="true"
+                                    />
+                                </div>
+                            }
+                            <input
+                                #inputEl
+                                [id]="id"
+                                name="input-static"
+                                type="text"
+                                class="input-lookup-static"
+                                [class.po-lookup-input-disabled]="isDisabled()"
+                                autocomplete="off"
+                                [attr.readonly]="readonly() ? true : undefined"
+                                [attr.maxlength]="maxlength()"
+                                [attr.inputmode]="type() === 'number' ? 'number' : 'text'"
+                                [attr.pattern]="type() === 'number' ? '[0-9]*' : undefined"
+                                (keydown)="onInputKeydown($event)"
+                                (input)="onInput($event)"
+                            >
+                        </div>
+                    </div>
+
+                    <div
+                        class="po-field-icon-container-right"
+                        [class.po-field-icon-container-right-aa]="size() === 'small'"
+                        [class.po-clickable]="!isDisabled()"
+                        [class.thf-icon-not-allowed]="isDisabled()"
+                    >
+                        @if (loading()) {
+                            <po-loading-icon [p-size]="size() === 'small' ? 'xs' : 'sm'"/>
+                        }
+
+                        @if (!loading() && clean() && !isDisabled() && !readonly()) {
+                            <po-icon
+                                p-icon="ICON_CLEAR_CONTENT"
+                                class="thf-field-icon po-icon-input"
+                                [class.thf-field-icon-aa]="size() === 'small'"
+                                tabindex="0"
+                                (click)="clearDisclaimers()"
+                            />
+                        }
+                    </div>
+                    <div
+                        class="po-field-icon-container-left"
+                        [style.pointer-events]="isDisabled() || readonly() ? 'none' : 'all'"
+                    >
+                        <po-icon
+                            p-icon="ICON_SEARCH"
+                            class="po-field-icon"
+                            [class.po-icon-input]="!isDisabled()"
+                            [class.po-field-icon-aa]="size() === 'small'"
+                            [class.po-field-icon-disabled]="isDisabled()"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</po-field-container>

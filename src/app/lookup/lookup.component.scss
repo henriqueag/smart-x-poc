@@ -1,0 +1,48 @@
+:host {
+    --font-family: var(--font-family-theme);
+    --font-size: var(--font-size);
+    --text-color-placeholder: var(--color-neutral-light-30);
+    --color: var(--color-neutral-dark-70);
+    --background: var(--color-neutral-light-00);
+    --text-color: var(--color-neutral-mid-60);
+    --color-hover: var(--color-brand-01-dark);
+    --background-hover: var(--color-brand-01-lightest);
+    --color-focused: var(--color-action-default);
+    --outline-color-focused: var(--color-action-focus);
+    --color-disabled: var(--color-neutral-light-30);
+    --background-disabled: var(--color-neutral-light-05);
+    --text-color-disabled: var(--color-neutral-dark-70);
+}
+
+:host[t-disabled=true] ::ng-deep po-disclaimer {
+    .po-disclaimer {
+        --background-disabled: var(--color-neutral-light-20);
+
+        background-color: var(--background-disabled);
+        border-color: var(--color-disabled);
+        color: var(--text-color-disabled);
+    }
+}
+
+:host[t-size=small] .po-lookup-input.po-lookup-input-auto,
+:host[t-size=small] .po-lookup-input.po-lookup-input-static {
+    padding-top: .5px;
+    padding-bottom: .5px;
+}
+
+:host[t-size=small] .thf-lookup-input .thf-input {
+    font-size: var(--font-size, var(--font-size-sm));
+    min-height: var(--target-size-aa);
+}
+
+.po-field-icon-container-right {
+    max-width: 24px;
+    max-height: 24px;
+}
+
+.po-field-icon-container-right-aa {
+    max-width: 16px;
+    max-height: 16px;
+}
+
+

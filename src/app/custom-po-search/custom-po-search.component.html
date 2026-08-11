@@ -1,0 +1,44 @@
+<div style="width: 300px">
+    <po-button
+        class="po-mb-2 po-mr-1"
+        p-label="Modificar"
+        (p-click)="onModify()"
+    />
+
+    <po-radio-group [(ngModel)]="radioValue" [p-options]="radioOptions"></po-radio-group>
+
+    <po-button
+        class="po-mb-2"
+        p-label="Trocar tema"
+        (p-click)="toogleTheme()"
+    />
+
+    <lookup
+        [loading]="radioValue === 'loading'"
+        [disabled]="radioValue === 'disabled'"
+        [readonly]="radioValue === 'readonly'"
+        [clean]="true"
+        [maxlength]="2"
+        [type]="'number'"
+    />
+
+    <form [formGroup]="formMission">
+        <thf-lookup
+            formControlName="lookup2"
+            name="lookupMultiple"
+            t-field-label="name"
+            t-field-value="value"
+            t-filter-service="http://localhost:3000/api/mockoon/heroes"
+            t-key-last-search="lookupMultiple"
+            t-label="Heróis"
+            t-placeholder="Placeholder multiple"
+            [t-columns]="columns"
+            [t-grid-properties]="gridProperties"
+            [t-keys-label]="keysLabel"
+            [t-multiple]="true"
+            [t-disabled]="radioValue === 'disabled'"
+            [t-readonly]="radioValue === 'readonly'"
+            [t-filter-search-select]="filterSelect"
+        ></thf-lookup>
+    </form>
+</div>

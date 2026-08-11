@@ -1,12 +1,6 @@
 import { Routes } from '@angular/router';
+import { CustomPoSearchComponent } from './custom-po-search/custom-po-search.component';
 
 export const routes: Routes = [
-    {
-        path: 'reports/list',
-        loadComponent: () => import('./smart-x/smart-resource-wrapper.component').then(c => c.SmartResourceWrapperComponent)
-    },
-    {
-        path: 'reports/create',
-        loadComponent: () => import('./reports/create/create.component').then(c => c.CreateComponent),
-    }
+    { path: 'test', component: CustomPoSearchComponent }
 ];
