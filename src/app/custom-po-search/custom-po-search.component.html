@@ -17,9 +17,10 @@
         [loading]="radioValue === 'loading'"
         [disabled]="radioValue === 'disabled'"
         [readonly]="radioValue === 'readonly'"
-        [clean]="true"
-        [maxlength]="2"
-        [type]="'number'"
+        [clean]="radioValue === 'clean'"
+        [maxlength]="undefined"
+        [multiValue]="false"
+        [type]="'string'"
     />
 
     <form [formGroup]="formMission">
@@ -28,16 +29,17 @@
             name="lookupMultiple"
             t-field-label="name"
             t-field-value="value"
-            t-filter-service="http://localhost:3000/api/mockoon/heroes"
+            t-filter-service="https://po-sample-api.onrender.com/v1/heroes"
             t-key-last-search="lookupMultiple"
             t-label="Heróis"
             t-placeholder="Placeholder multiple"
             [t-columns]="columns"
             [t-grid-properties]="gridProperties"
             [t-keys-label]="keysLabel"
-            [t-multiple]="true"
+            [t-multiple]="false"
             [t-disabled]="radioValue === 'disabled'"
             [t-readonly]="radioValue === 'readonly'"
+            [t-clean]="true"
             [t-filter-search-select]="filterSelect"
         ></thf-lookup>
     </form>

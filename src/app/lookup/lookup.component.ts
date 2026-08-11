@@ -6,10 +6,13 @@ import {
     effect,
     inject,
     input,
+    linkedSignal,
+    model,
     signal,
     viewChild,
     viewChildren
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { PoDisclaimer, PoDisclaimerModule, PoFieldContainerModule, PoIconModule, PoLoadingModule } from '@po-ui/ng-components';
 
 const A11Y_ATTRIBUTE = 'data-a11y';
@@ -26,7 +29,7 @@ type LookupValueType = 'string' | 'number';
     selector: 'lookup',
     templateUrl: './lookup.component.html',
     styleUrls: ['./lookup.component.scss'],
-    imports: [PoFieldContainerModule, PoDisclaimerModule, PoIconModule, PoLoadingModule],
+    imports: [PoFieldContainerModule, PoDisclaimerModule, PoIconModule, PoLoadingModule, FormsModule],
     host: {
         '[attr.t-disabled]': 'isDisabled()',
         '[attr.t-size]': 'size()',
@@ -43,6 +46,7 @@ export class LookupComponent {
     readonly disabled = input(false);
     readonly readonly = input(false);
     readonly clean = input(false);
+    readonly multiValue = input(false);
 
     readonly disclaimerContainerElement = viewChild<ElementRef<HTMLDivElement>>('disclaimerContainer');
     readonly inputElement = viewChild<ElementRef<HTMLInputElement>>('inputElement');
@@ -54,10 +58,18 @@ export class LookupComponent {
     readonly size = signal<LookupSize>('small');
     readonly visibleDisclaimerCount = signal(this.disclaimers().length);
 
+    // TODO: Calcular hideClean usando o model vinculado ao form
+    readonly hideClean = linkedSignal({
+        source: this.inputElement,
+        computation: (source) => source.nativeElement.value.length === 0
+    });
+
+    value = model('kldajkdhajkhdjkahdjkahdjkahkdjhajkhdjkahdkjah');
+
     readonly isDisabled = computed(() => this.disabled() || this.loading());
     readonly isInteractive = computed(() => !this.isDisabled() && !this.readonly());
     readonly isCompact = computed(() => this.size() === 'small');
-    readonly shouldShowClearButton = computed(() => this.clean() && this.isInteractive());
+    readonly shouldShowClearButton = computed(() => this.loading() || (this.clean() && !this.hideClean() && this.isInteractive()));
     readonly visibleDisclaimers = computed(() => this.disclaimers().slice(0, this.visibleDisclaimerCount()));
     readonly hiddenDisclaimerCount = computed(() => this.disclaimers().length - this.visibleDisclaimerCount());
 
@@ -107,11 +119,14 @@ export class LookupComponent {
     }
 
     onInput(event: Event): void {
+        const input = event.target as HTMLInputElement;
+
+        this.hideClean.set(input.value.length === 0);
+
         if (this.type() !== 'number') {
             return;
         }
 
-        const input = event.target as HTMLInputElement;
         input.value = input.value.replace(/\D/g, '');
     }
 
@@ -126,6 +141,7 @@ export class LookupComponent {
         const input = this.inputElement()?.nativeElement;
         if (input) {
             input.value = '';
+            this.hideClean.set(true);
         }
 
         this.scheduleDisclaimerVisibilityCalculation();

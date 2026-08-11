@@ -89,7 +89,8 @@ export class CustomPoSearchComponent {
         { label: 'None', value: 'none' },
         { label: 'Loading', value: 'loading' },
         { label: 'Readonly', value: 'readonly' },
-        { label: 'Disabled', value: 'disabled' }
+        { label: 'Disabled', value: 'disabled' },
+        { label: 'Clean', value: 'clean' },
     ]
 
     toogleTheme() {
