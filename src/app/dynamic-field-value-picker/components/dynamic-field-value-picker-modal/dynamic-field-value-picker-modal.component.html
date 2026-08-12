@@ -4,17 +4,17 @@
     [p-primary-action]="actions().primary"
     [p-secondary-action]="actions().secondary"
 >
-    @if (lookupSrv.configured()) {
+    @if (lookupService.configured()) {
         <thf-lookup-data
             #lookupData
             name="lookupData"
             [ngModel]="selectedValue()"
             [ngModelOptions]="{ standalone: true }"
-            [t-filter-service]="lookupSrv"
-            [t-disabled]="lookupSrv.loading()"
-            [t-field-label]="lookupSrv.keyProperty()"
-            [t-field-value]="lookupSrv.keyProperty()"
-            [t-columns]="lookupSrv.columns()"
+            [t-filter-service]="lookupService"
+            [t-disabled]="lookupService.loading()"
+            [t-field-label]="lookupService.keyProperty()"
+            [t-field-value]="lookupService.keyProperty()"
+            [t-columns]="lookupService.columns()"
             [t-multiple]="multiValue()"
             [t-height]="450"
             (ngModelChange)="onSelected($event)"

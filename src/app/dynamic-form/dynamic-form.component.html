@@ -1,3 +1,6 @@
+<!-- Carrega os estilos internos do THF uma única vez para os campos dinâmicos. -->
+<thf-lookup hidden t-field-label="hidden" aria-hidden="true" tabindex="-1" />
+
 <div class="left">
     <po-button
         class="po-mb-2"
@@ -14,7 +17,7 @@
     <po-number class="po-mb-2" p-label="MaxLength" [(ngModel)]="maxlength"></po-number>
 
     <form [formGroup]="formTest">
-        <lookup
+        <dynamic-field-value-picker
             formControlName="lookup1"
             label="Lookup Single String"
             [loading]="radioValue === 'loading'"
@@ -24,8 +27,9 @@
             [multiValue]="false"
             [type]="'string'"
             [serviceUrl]="serviceUrlStr"
+            [selectionMode]="'lookup'"
         />
-        <lookup
+        <dynamic-field-value-picker
             formControlName="lookup2"
             [type]="'number'"
             label="Lookup Multi String"
@@ -35,27 +39,19 @@
             [maxlength]="maxlength"
             [multiValue]="true"
             [serviceUrl]="serviceUrl"
+            [selectionMode]="'lookup'"
         />
-        <!-- <lookup
-            formControlName="lookup3"
-            label="Lookup Single Number"
-            [loading]="radioValue === 'loading'"
-            [readonly]="radioValue === 'readonly'"
-            [clean]="radioValue === 'clean'"
-            [maxlength]="maxlength"
-            [multiValue]="false"
-            [type]="'number'"
-        />
-        <lookup
+        <dynamic-field-value-picker
             formControlName="lookup4"
-            label="Lookup Multi Number"
+            label="Manual Multi Number"
             [loading]="radioValue === 'loading'"
             [readonly]="radioValue === 'readonly'"
             [clean]="radioValue === 'clean'"
             [maxlength]="maxlength"
             [multiValue]="true"
             [type]="'number'"
-        /> -->
+            [selectionMode]="'manual'"
+        />
     </form>
 
     <!-- <form [formGroup]="formMission">

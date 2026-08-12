@@ -1,88 +1,80 @@
-import {
-    Component,
-    DestroyRef,
-    ElementRef,
-    computed,
-    effect,
-    forwardRef,
-    inject,
-    input,
-    signal,
-    viewChild,
-    viewChildren
-} from '@angular/core';
+import { Component, DestroyRef, ElementRef, Renderer2, computed, effect, forwardRef, inject, input, signal, viewChild, viewChildren } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { PoDisclaimer, PoDisclaimerModule, PoFieldContainerModule, PoIconModule, PoLoadingModule } from '@po-ui/ng-components';
-import { ThfLookupComponent } from '@totvs/thf-components';
 import { v4 as uuid } from 'uuid';
-import { LookupModalComponent } from './components/lookup-modal/lookup-modal.component';
-import { LookupService, LookupValue } from './services/lookup.service';
+import { DynamicFieldValuePickerModalComponent } from './components/dynamic-field-value-picker-modal/dynamic-field-value-picker-modal.component';
+import { DynamicFieldValuePickerLookupService, LookupValue } from './services/dynamic-field-value-picker-lookup.service';
+import { getVisibleDisclaimerCount } from './utils/disclaimer-layout.util';
 
 const A11Y_ATTRIBUTE = 'data-a11y';
 const INPUT_RESERVED_WIDTH = 44;
 const DISCLAIMER_GAP = 4;
 
-type LookupSize = 'small' | 'medium';
-type LookupValueType = 'string' | 'number';
-type LookupPrimitiveValue = string | number;
+type DynamicFieldValuePickerSize = 'small' | 'medium';
+type DynamicFieldValueType = 'string' | 'number';
+type DynamicFieldValuePrimitive = string | number;
+export type DynamicFieldValuePickerSelectionMode = 'manual' | 'lookup';
 
 @Component({
-    selector: 'lookup',
-    templateUrl: './lookup.component.html',
-    styleUrls: ['./lookup.component.scss'],
+    selector: 'dynamic-field-value-picker',
+    templateUrl: './dynamic-field-value-picker.component.html',
+    styleUrls: ['./dynamic-field-value-picker.component.scss'],
     imports: [
         PoFieldContainerModule,
         PoDisclaimerModule,
         PoIconModule,
         PoLoadingModule,
         ReactiveFormsModule,
-        ThfLookupComponent,
-        LookupModalComponent
+        DynamicFieldValuePickerModalComponent
     ],
     providers: [
         {
             provide: NG_VALUE_ACCESSOR,
-            useExisting: forwardRef(() => LookupComponent),
+            useExisting: forwardRef(() => DynamicFieldValuePickerComponent),
             multi: true
         },
-        LookupService
+        DynamicFieldValuePickerLookupService
     ],
     host: {
         '[attr.t-disabled]': 'isDisabled()',
-        '[attr.t-size]': 'size()',
-        '(document:click)': 'onDocumentClick($event)'
+        '[attr.t-size]': 'size()'
     }
 })
-export class LookupComponent implements ControlValueAccessor {
+export class DynamicFieldValuePickerComponent implements ControlValueAccessor {
     private readonly destroyRef = inject(DestroyRef);
     private readonly hostElement = inject(ElementRef<HTMLElement>);
-    private readonly lookupSrv = inject(LookupService);
+    private readonly renderer = inject(Renderer2);
+    private readonly lookupService = inject(DynamicFieldValuePickerLookupService);
 
     readonly label = input<string | null>();
-    readonly type = input<LookupValueType>('string');
+    readonly type = input<DynamicFieldValueType>('string');
     readonly maxlength = input<number>();
     readonly loading = input(false);
     readonly disabled = input(false);
     readonly readonly = input(false);
     readonly clean = input(false);
     readonly multiValue = input(false);
+    readonly selectionMode = input<DynamicFieldValuePickerSelectionMode>('lookup');
     readonly serviceUrl = input<string>();
 
     readonly inputValueControl = new FormControl('', { nonNullable: true });
+
+    private readonly modal = viewChild(DynamicFieldValuePickerModalComponent);
     readonly disclaimerContainerElement = viewChild<ElementRef<HTMLDivElement>>('disclaimerContainer');
     readonly inputElement = viewChild<ElementRef<HTMLInputElement>>('inputElement');
     readonly disclaimerItemElements = viewChildren<ElementRef<HTMLDivElement>>('disclaimerItem');
 
-    readonly inputId = `lookup[${uuid()}`;
+    readonly inputId = `dynamic-field-value-picker-${uuid()}`;
     readonly disclaimers = signal<PoDisclaimer[]>([]);
     readonly isExpanded = signal(false);
-    readonly size = signal<LookupSize>('small');
+    readonly size = signal<DynamicFieldValuePickerSize>('small');
     readonly visibleDisclaimerCount = signal(0);
     readonly hasInputValue = signal(false);
     readonly isFormDisabled = signal(false);
 
-    readonly isLoading = computed(() => this.loading() || this.lookupSrv.loading());
+    readonly hasLookup = computed(() => this.selectionMode() === 'lookup');
+    readonly isLoading = computed(() => this.loading() || (this.hasLookup() && this.lookupService.loading()));
     readonly isDisabled = computed(() => this.disabled() || this.isLoading() || this.isFormDisabled());
     readonly isInteractive = computed(() => !this.isDisabled() && !this.readonly());
     readonly isCompact = computed(() => this.size() === 'small');
@@ -99,6 +91,8 @@ export class LookupComponent implements ControlValueAccessor {
     private hasPendingChange = false;
     private resizeObserver?: ResizeObserver;
     private accessibilityObserver?: MutationObserver;
+    private documentClickCleanup?: () => void;
+    private disclaimerCalculationFrame?: number;
     private observedContainerWidth?: number;
 
     constructor() {
@@ -110,18 +104,26 @@ export class LookupComponent implements ControlValueAccessor {
         this.destroyRef.onDestroy(() => this.disconnectObservers());
 
         effect(() => {
-            const confirmedValue = this.lookupSrv.confirmedValue();
+            if (!this.hasLookup()) {
+                return;
+            }
+
+            let confirmedValue = this.lookupService.confirmedValue();
+
+            if (Array.isArray(confirmedValue)) {
+                confirmedValue = confirmedValue.filter(value => value !== null && value !== undefined);
+            }
 
             if (confirmedValue !== undefined) {
                 this.writeValue(confirmedValue);
                 this.scheduleValuePropagation(confirmedValue);
-                this.lookupSrv.clearConfirmedValue();
+                this.lookupService.clearConfirmedValue();
             }
         });
     }
 
     writeValue(value: LookupValue): void {
-        this.lookupSrv.setFieldValue(value);
+        this.lookupService.setFieldValue(value);
 
         if (this.multiValue()) {
             this.disclaimers.set(this.toDisclaimerValues(value));
@@ -170,15 +172,20 @@ export class LookupComponent implements ControlValueAccessor {
 
         this.isExpanded.set(true);
         this.visibleDisclaimerCount.set(this.disclaimers().length);
+        this.documentClickCleanup ??= this.renderer.listen('document', 'click', event => this.onDocumentClick(event));
     }
 
     collapseDisclaimers(): void {
-        if (!this.isInteractive()) {
-            return;
-        }
-
         this.isExpanded.set(false);
+        this.documentClickCleanup?.();
+        this.documentClickCleanup = undefined;
         this.scheduleDisclaimerVisibilityCalculation();
+    }
+
+    openLookup(): void {
+        if (this.isInteractive() && this.hasLookup()) {
+            this.modal().open();
+        }
     }
 
     onInputKeydown(event: KeyboardEvent): void {
@@ -222,6 +229,15 @@ export class LookupComponent implements ControlValueAccessor {
         this.onTouched();
     }
 
+    onInteractiveKeydown(event: KeyboardEvent, action: () => void): void {
+        if (!this.isInteractive() || !this.isActivationKey(event.key)) {
+            return;
+        }
+
+        event.preventDefault();
+        action();
+    }
+
     removeDisclaimer(disclaimer: PoDisclaimer): void {
         this.disclaimers.update(disclaimers => disclaimers.filter(item => item !== disclaimer));
         this.propagateMultiValue();
@@ -233,6 +249,7 @@ export class LookupComponent implements ControlValueAccessor {
             this.disclaimers.set([]);
             this.inputValueControl.setValue('', { emitEvent: false });
             this.propagateMultiValue();
+            this.modal()?.clearSelection();
             this.scheduleDisclaimerVisibilityCalculation();
         } else {
             this.inputValueControl.setValue('', { emitEvent: false });
@@ -243,8 +260,8 @@ export class LookupComponent implements ControlValueAccessor {
         this.focusInput();
     }
 
-    onDocumentClick(event: MouseEvent): void {
-        if (this.isExpanded() && !event.composedPath().includes(this.hostElement.nativeElement)) {
+    private onDocumentClick(event: MouseEvent): void {
+        if (!event.composedPath().includes(this.hostElement.nativeElement)) {
             this.collapseDisclaimers();
         }
     }
@@ -312,17 +329,22 @@ export class LookupComponent implements ControlValueAccessor {
     private disconnectObservers(): void {
         this.resizeObserver?.disconnect();
         this.accessibilityObserver?.disconnect();
+        this.documentClickCleanup?.();
+
+        if (this.disclaimerCalculationFrame !== undefined) {
+            cancelAnimationFrame(this.disclaimerCalculationFrame);
+        }
     }
 
     private propagateSingleValue(value: string): void {
         const outputValue = this.toOutputValue(value);
-        this.lookupSrv.setFieldValue(outputValue);
+        this.lookupService.setFieldValue(outputValue);
         this.scheduleValuePropagation(outputValue);
     }
 
     private propagateMultiValue(): void {
         const outputValue = this.disclaimers().map(disclaimer => this.toOutputValue(String(disclaimer.value)));
-        this.lookupSrv.setFieldValue(outputValue);
+        this.lookupService.setFieldValue(outputValue);
         this.scheduleValuePropagation(outputValue);
     }
 
@@ -348,7 +370,7 @@ export class LookupComponent implements ControlValueAccessor {
         );
     }
 
-    private toOutputValue(value: string): LookupPrimitiveValue | null {
+    private toOutputValue(value: string): DynamicFieldValuePrimitive | null {
         if (this.type() === 'string') {
             return value;
         }
@@ -374,7 +396,15 @@ export class LookupComponent implements ControlValueAccessor {
 
     private scheduleDisclaimerVisibilityCalculation(): void {
         this.visibleDisclaimerCount.set(this.disclaimers().length);
-        requestAnimationFrame(() => this.calculateVisibleDisclaimers());
+
+        if (this.disclaimerCalculationFrame !== undefined) {
+            cancelAnimationFrame(this.disclaimerCalculationFrame);
+        }
+
+        this.disclaimerCalculationFrame = requestAnimationFrame(() => {
+            this.disclaimerCalculationFrame = undefined;
+            this.calculateVisibleDisclaimers();
+        });
     }
 
     private calculateVisibleDisclaimers(): void {
@@ -397,35 +427,23 @@ export class LookupComponent implements ControlValueAccessor {
         }
 
         const availableWidth = container.nativeElement.clientWidth - INPUT_RESERVED_WIDTH;
-        const visibleCount = this.getVisibleDisclaimerCount(disclaimerItems, availableWidth);
+        const itemWidths = disclaimerItems.map(item => item.nativeElement.offsetWidth);
+        const visibleCount = getVisibleDisclaimerCount(itemWidths, availableWidth, DISCLAIMER_GAP);
 
         this.visibleDisclaimerCount.set(
             visibleCount === disclaimers.length ? visibleCount : Math.max(1, visibleCount)
         );
     }
 
-    private getVisibleDisclaimerCount(items: readonly ElementRef<HTMLDivElement>[], availableWidth: number): number {
-        let occupiedWidth = 0;
-        let visibleCount = 0;
-
-        for (const item of items) {
-            occupiedWidth += item.nativeElement.offsetWidth + DISCLAIMER_GAP;
-
-            if (occupiedWidth > availableWidth) {
-                break;
-            }
-
-            visibleCount++;
-        }
-
-        return visibleCount;
-    }
-
     private isSubmitKey(key: string): boolean {
         return key === 'Enter' || key === 'Tab';
     }
 
-    private getSize(element: HTMLElement): LookupSize {
+    private isActivationKey(key: string): boolean {
+        return key === 'Enter' || key === ' ';
+    }
+
+    private getSize(element: HTMLElement): DynamicFieldValuePickerSize {
         return element.getAttribute(A11Y_ATTRIBUTE) === 'AAA' ? 'medium' : 'small';
     }
 }

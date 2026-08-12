@@ -1,5 +1,3 @@
-<thf-lookup hidden t-field-label="hidden" aria-hidden="true" tabindex="-1" />
-
 <po-field-container [p-label]="label()" [p-disabled]="isDisabled()" [p-size]="size()">
     <div cdkoverlayorigin class="po-field-container-content" [attr.p-size]="size()">
         <div class="thf-lookup-input">
@@ -10,17 +8,17 @@
                 >
                     @if (multiValue()) {
                         <div
-                            class="thf-input po-input-icon-left po-lookup-input po-icon-input thf-lookup-input-element"
+                            class="thf-input po-lookup-input po-icon-input thf-lookup-input-element"
                             [class.thf-input-aa]="isCompact()"
                             [class.po-lookup-input-static]="!isExpanded()"
                             [class.po-lookup-input-auto]="isExpanded()"
                             [class.po-lookup-input-static-aa]="!isExpanded() && isCompact()"
                             [class.po-lookup-input-auto-aa]="isExpanded() && isCompact()"
-                            [class.po-input-icon-left-aa]="isCompact()"
+                            [class.po-input-icon-left]="hasLookup()"
+                            [class.po-input-icon-left-aa]="isCompact() && hasLookup()"
                             [class.po-lookup-input-aa]="isCompact()"
                             [class.po-lookup-input-disabled]="isDisabled()"
                             [class.thf-lookup-input-readonly]="readonly()"
-                            tabindex="0"
                             (click)="focusInput()"
                         >
                             <div class="container-static-lookup" #disclaimerContainer>
@@ -39,7 +37,11 @@
                                     <div
                                         class="po-lookup-input-disclaimer-item"
                                         [class.po-clickable]="isInteractive()"
+                                        role="button"
+                                        [attr.aria-label]="'Exibir mais ' + hiddenDisclaimerCount() + ' valores'"
+                                        [attr.tabindex]="isInteractive() ? 0 : -1"
                                         (click)="expandDisclaimers()"
+                                        (keydown)="onInteractiveKeydown($event, expandDisclaimers.bind(this))"
                                     >
                                         <po-disclaimer
                                             class="po-lookup-input-disclaimer thf-lookup-disclaimer"
@@ -76,8 +78,8 @@
                             type="text"
                             class="thf-input po-input-icon-left thf-lookup-input-element"
                             [class.po-input-icon-right]="isLoading() || shouldShowClearButton()"
-                            [class.po-input-icon-left-aa]="isCompact()"
                             [class.po-input-icon-right-aa]="isCompact() && (isLoading() || shouldShowClearButton())"
+                            [class.po-input-icon-left-aa]="isCompact()"
                             [class.po-lookup-input-disabled]="isDisabled()"
                             [class.thf-lookup-input-readonly]="readonly()"
                             [formControl]="inputValueControl"
@@ -103,29 +105,40 @@
                                 p-icon="ICON_CLEAR_CONTENT"
                                 class="thf-field-icon po-icon-input"
                                 [class.thf-field-icon-aa]="isCompact()"
-                                tabindex="0"
+                                role="button"
+                                aria-label="Limpar valor"
+                                [attr.tabindex]="isInteractive() ? 0 : -1"
                                 (click)="clearValue()"
+                                (keydown)="onInteractiveKeydown($event, clearValue.bind(this))"
                             />
                         }
                     </div>
 
-                    <div
-                        class="po-field-icon-container-left"
-                        [style.pointer-events]="isInteractive() ? 'all' : 'none'"
-                    >
-                        <po-icon
-                            p-icon="ICON_SEARCH"
-                            class="po-field-icon"
-                            [class.po-icon-input]="!isDisabled()"
-                            [class.po-field-icon-aa]="isCompact()"
-                            [class.po-field-icon-disabled]="isDisabled()"
-                            (click)="modal.open()"
-                        />
-                    </div>
+                    @if (hasLookup()) {
+                        <div
+                            class="po-field-icon-container-left"
+                            [style.pointer-events]="isInteractive() ? 'all' : 'none'"
+                        >
+                            <po-icon
+                                p-icon="ICON_SEARCH"
+                                class="po-field-icon"
+                                [class.po-icon-input]="!isDisabled()"
+                                [class.po-field-icon-aa]="isCompact()"
+                                [class.po-field-icon-disabled]="isDisabled()"
+                                role="button"
+                                aria-label="Pesquisar valores"
+                                [attr.tabindex]="isInteractive() ? 0 : -1"
+                                (click)="openLookup()"
+                                (keydown)="onInteractiveKeydown($event, openLookup.bind(this))"
+                            />
+                        </div>
+                    }
                 </div>
             </div>
         </div>
     </div>
 </po-field-container>
 
-<lookup-modal #modal [serviceUrl]="serviceUrl()" [multiValue]="multiValue()"/>
+@if (hasLookup()) {
+    <dynamic-field-value-picker-modal #modal [serviceUrl]="serviceUrl()" [multiValue]="multiValue()" />
+}

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { CustomPoSearchComponent } from './custom-po-search/custom-po-search.component';
+import { DynamicFormComponent } from './dynamic-form/dynamic-form.component';
 
 export const routes: Routes = [
-    { path: 'test', component: CustomPoSearchComponent }
+    { path: 'test', component: DynamicFormComponent }
 ];

@@ -2,15 +2,15 @@ import { Component, computed, effect, inject, input, signal, viewChild } from '@
 import { FormsModule } from '@angular/forms';
 import { ThfLookupDataComponent } from '@totvs/thf-components';
 import { PoModalAction, PoModalComponent, PoModalModule } from '@po-ui/ng-components';
-import { LookupService, LookupValue } from '../../services/lookup.service';
+import { DynamicFieldValuePickerLookupService, LookupValue } from '../../services/dynamic-field-value-picker-lookup.service';
 
 @Component({
-    selector: 'lookup-modal',
-    templateUrl: './lookup-modal.component.html',
+    selector: 'dynamic-field-value-picker-modal',
+    templateUrl: './dynamic-field-value-picker-modal.component.html',
     imports: [FormsModule, PoModalModule, ThfLookupDataComponent]
 })
-export class LookupModalComponent {
-    readonly lookupSrv = inject(LookupService);
+export class DynamicFieldValuePickerModalComponent {
+    readonly lookupService = inject(DynamicFieldValuePickerLookupService);
 
     readonly multiValue = input(false);
     readonly serviceUrl = input<string>();
@@ -23,7 +23,7 @@ export class LookupModalComponent {
         primary: {
             label: 'Selecionar',
             action: () => {
-                this.lookupSrv.confirmSelection(this.selectedValue());
+                this.lookupService.confirmSelection(this.getConfirmedValue());
                 this.modal()?.close();
             }
         },
@@ -32,7 +32,7 @@ export class LookupModalComponent {
 
     constructor() {
         effect(() => {
-            if (!this.pendingInitialValueResolution() || !this.lookupSrv.initialized()) {
+            if (!this.pendingInitialValueResolution() || !this.lookupService.initialized()) {
                 return;
             }
 
@@ -43,7 +43,7 @@ export class LookupModalComponent {
 
             this.pendingInitialValueResolution.set(false);
 
-            const value = this.lookupSrv.fieldValue();
+            const value = this.lookupService.fieldValue();
             if (value !== null) {
                 requestAnimationFrame(() => lookupData['searchByValue'](value, true));
             }
@@ -51,13 +51,23 @@ export class LookupModalComponent {
     }
 
     open(): void {
-        this.selectedValue.set(this.lookupSrv.fieldValue());
+        this.selectedValue.set(this.lookupService.fieldValue());
         this.pendingInitialValueResolution.set(true);
-        this.lookupSrv.configure(this.serviceUrl());
+        this.lookupService.configure(this.serviceUrl());
         this.modal()?.open();
     }
 
-    onSelected(value: LookupValue): void {
-        this.selectedValue.set(value);
+    clearSelection(): void {
+        this.selectedValue.set(this.multiValue() ? [] : null);
+    }
+
+    onSelected(value: LookupValue | undefined): void {
+        this.selectedValue.set(value ?? (this.multiValue() ? [] : null));
+    }
+
+    private getConfirmedValue(): LookupValue {
+        const value = this.selectedValue();
+
+        return value === null && this.multiValue() ? [] : value;
     }
 }

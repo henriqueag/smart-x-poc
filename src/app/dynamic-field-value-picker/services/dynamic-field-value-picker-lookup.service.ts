@@ -17,7 +17,7 @@ export interface Lookup {
 }
 
 @Injectable()
-export class LookupService implements ThfLookupDataFilter {
+export class DynamicFieldValuePickerLookupService implements ThfLookupDataFilter {
     private readonly httpClient = inject(HttpClient);
 
     private readonly requestUrl = signal<string | null>(null);
@@ -92,6 +92,10 @@ export class LookupService implements ThfLookupDataFilter {
     }
 
     getObjectByValue(value: LookupValue): Observable<any> {
+        if (Array.isArray(value) && value.length === 0) {
+            return of([{}]);
+        }
+
         return of(null).pipe(
             switchMap(() => {
                 const values = this.toValues(value);
