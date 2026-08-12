@@ -28,7 +28,7 @@ export class CustomPoSearchComponent {
     private readonly themeSrv = inject(ThfThemeService);
 
     readonly serviceUrl = 'http://localhost:3000/api/mockoon/objects/employees/schema/properties/options?type=lookup&id=1';
-
+    readonly serviceUrlStr = 'http://localhost:3000/api/mockoon/objects/employees/schema/properties/options?type=lookup&id=2';
     openSearch() {
 
     }
@@ -42,8 +42,8 @@ export class CustomPoSearchComponent {
     }
 
     formTest = new FormGroup({
-        lookup1: new FormControl('fjkljslfkjsklfjsldkjfklsdjfkljsddlfjsdlkjfklioweujrioweuqio'),
-        lookup2: new FormControl(['Disclaimer 1', 'Disclaimer 2', 'Disclaimer 3', 'Disclaimer 4', 'Disclaimer 5']),
+        lookup1: new FormControl('Hahn, Stokes and Rolfson'),
+        lookup2: new FormControl([1, 2]),
         lookup3: new FormControl(null),
         lookup4: new FormControl([1, 2, 3, 4, 5, 6])
     })

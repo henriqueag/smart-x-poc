@@ -4,17 +4,20 @@
     [p-primary-action]="actions().primary"
     [p-secondary-action]="actions().secondary"
 >
-    @if (this.lookupSrv.configured()) {
+    @if (lookupSrv.configured()) {
         <thf-lookup-data
-            name="lookupDataSingle"
+            #lookupData
+            name="lookupData"
+            [ngModel]="selectedValue()"
+            [ngModelOptions]="{ standalone: true }"
             [t-filter-service]="lookupSrv"
             [t-disabled]="lookupSrv.loading()"
             [t-field-label]="lookupSrv.keyProperty()"
             [t-field-value]="lookupSrv.keyProperty()"
             [t-columns]="lookupSrv.columns()"
-            [t-multiple]="multiValue"
+            [t-multiple]="multiValue()"
             [t-height]="450"
-            (t-selected)="onSelected($event)"
+            (ngModelChange)="onSelected($event)"
         />
     }
 </po-modal>

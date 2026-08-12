@@ -17,7 +17,7 @@ import { PoDisclaimer, PoDisclaimerModule, PoFieldContainerModule, PoIconModule,
 import { ThfLookupComponent } from '@totvs/thf-components';
 import { v4 as uuid } from 'uuid';
 import { LookupModalComponent } from './components/lookup-modal/lookup-modal.component';
-import { LookupService } from './services/lookup.service';
+import { LookupService, LookupValue } from './services/lookup.service';
 
 const A11Y_ATTRIBUTE = 'data-a11y';
 const INPUT_RESERVED_WIDTH = 44;
@@ -26,7 +26,6 @@ const DISCLAIMER_GAP = 4;
 type LookupSize = 'small' | 'medium';
 type LookupValueType = 'string' | 'number';
 type LookupPrimitiveValue = string | number;
-type LookupValue = LookupPrimitiveValue | LookupPrimitiveValue[] | null;
 
 @Component({
     selector: 'lookup',
@@ -96,6 +95,8 @@ export class LookupComponent implements ControlValueAccessor {
 
     private onChange: (value: LookupValue) => void = () => undefined;
     private onTouched: () => void = () => undefined;
+    private pendingChangeValue: LookupValue = null;
+    private hasPendingChange = false;
     private resizeObserver?: ResizeObserver;
     private accessibilityObserver?: MutationObserver;
     private observedContainerWidth?: number;
@@ -109,12 +110,19 @@ export class LookupComponent implements ControlValueAccessor {
         this.destroyRef.onDestroy(() => this.disconnectObservers());
 
         effect(() => {
-            const selectedItems: LookupValue = this.lookupSrv.selectedItems();
-            this.writeValue(selectedItems);
-        })
+            const confirmedValue = this.lookupSrv.confirmedValue();
+
+            if (confirmedValue !== undefined) {
+                this.writeValue(confirmedValue);
+                this.scheduleValuePropagation(confirmedValue);
+                this.lookupSrv.clearConfirmedValue();
+            }
+        });
     }
 
     writeValue(value: LookupValue): void {
+        this.lookupSrv.setFieldValue(value);
+
         if (this.multiValue()) {
             this.disclaimers.set(this.toDisclaimerValues(value));
             this.inputValueControl.setValue('', { emitEvent: false });
@@ -307,11 +315,29 @@ export class LookupComponent implements ControlValueAccessor {
     }
 
     private propagateSingleValue(value: string): void {
-        this.onChange(this.toOutputValue(value));
+        const outputValue = this.toOutputValue(value);
+        this.lookupSrv.setFieldValue(outputValue);
+        this.scheduleValuePropagation(outputValue);
     }
 
     private propagateMultiValue(): void {
-        this.onChange(this.disclaimers().map(disclaimer => this.toOutputValue(String(disclaimer.value))));
+        const outputValue = this.disclaimers().map(disclaimer => this.toOutputValue(String(disclaimer.value)));
+        this.lookupSrv.setFieldValue(outputValue);
+        this.scheduleValuePropagation(outputValue);
+    }
+
+    private scheduleValuePropagation(value: LookupValue): void {
+        this.pendingChangeValue = value;
+
+        if (this.hasPendingChange) {
+            return;
+        }
+
+        this.hasPendingChange = true;
+        queueMicrotask(() => {
+            this.hasPendingChange = false;
+            this.onChange(this.pendingChangeValue);
+        });
     }
 
     private hasDuplicateDisclaimer(value: string): boolean {
